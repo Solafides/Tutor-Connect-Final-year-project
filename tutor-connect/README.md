@@ -14,7 +14,7 @@ A modern, full-stack tutoring platform connecting students with verified tutors 
 
 ## 🛠️ Technology Stack
 
-- **Framework**: Next.js 16.1 (App Router with Turbopack)
+- **Framework**: Next.js 15.5.10 (App Router with Turbopack)
 - **Language**: TypeScript 5.7
 - **Database**: PostgreSQL with Prisma ORM 6.2
 - **Authentication**: NextAuth.js v5.0.0-beta.30
