@@ -177,6 +177,7 @@ model TutorProfile {
   bookings           Booking[]
   reviews            Review[]
   classroomResources ClassroomResource[]
+  classrooms         Classroom[]
 
   @@index([verificationStatus])
   @@index([rating])
@@ -328,16 +329,22 @@ model Booking {
 // CLASSROOM
 // =======================
 
+
 model Classroom {
   id          String   @id @default(cuid())
-  bookingId   String   @unique @map("booking_id")
+  bookingId   String?  @unique @map("booking_id")
+  tutorId     String?  @map("tutor_id")
+  title       String?
+  subject     String?
   meetingLink String?  @map("meeting_link")
   meetingId   String?  @map("meeting_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  booking   Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking   Booking?            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tutor     TutorProfile?       @relation(fields: [tutorId], references: [id], onDelete: Cascade)
   resources ClassroomResource[]
-
+  
+  @@index([tutorId])
   @@map("classrooms")
 }
 

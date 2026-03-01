@@ -1,8 +1,22 @@
 'use client';
 
+// =========================================================================
+// ⚠️ 1. REAL IMPORTS FOR VS CODE (UNCOMMENT THESE IN YOUR PROJECT) ⚠️
+// =========================================================================
+/*
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserRole } from '@prisma/client';
+*/
+
+// =========================================================================
+// 🛑 2. MOCK IMPORTS FOR CANVAS PREVIEW ONLY (DELETE THIS IN VS CODE) 🛑
+// =========================================================================
+const usePathname = () => '/admin/dashboard';
+const useRouter = () => ({ push: (path: string) => console.log(path), refresh: () => { } });
+const Link = ({ href, children, className }: any) => <a href={href} className={className}>{children}</a>;
+type UserRole = 'STUDENT' | 'TUTOR' | 'ADMIN' | 'STAFF';
+// =========================================================================
 
 interface NavigationProps {
     userRole?: UserRole;
@@ -12,6 +26,14 @@ interface NavigationProps {
 export function Navigation({ userRole, userName }: NavigationProps) {
     const pathname = usePathname();
     const router = useRouter();
+
+    // FIXED: Now we also check if the user is on the /login or /register page
+    // This completely removes the "Tutor Connect" top header on these pages so your sidebar fits perfectly
+    const isHiddenRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/register');
+
+    if (isHiddenRoute || userRole === 'ADMIN' || userRole === 'STAFF') {
+        return null;
+    }
 
     const handleSignOut = async () => {
         try {
@@ -38,9 +60,6 @@ export function Navigation({ userRole, userName }: NavigationProps) {
         { href: '/tutor/bookings', label: 'Bookings', icon: 'event', roles: ['TUTOR'] as UserRole[] },
         { href: '/tutor/classroom', label: 'My Classrooms', icon: 'school', roles: ['TUTOR'] as UserRole[] },
         { href: '/tutor/wallet', label: 'Earnings', icon: 'account_balance_wallet', roles: ['TUTOR'] as UserRole[] },
-        { href: '/staff/verification', label: 'Verification', icon: 'verified_user', roles: ['STAFF'] as UserRole[] },
-        { href: '/staff/complaints', label: 'Complaints', icon: 'report', roles: ['STAFF'] as UserRole[] },
-        { href: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['ADMIN'] as UserRole[] },
     ];
 
     const filteredNavItems = userRole
@@ -53,7 +72,7 @@ export function Navigation({ userRole, userName }: NavigationProps) {
                 <div className="flex h-16 items-center justify-between">
                     <div className="flex items-center gap-8">
                         <Link href={userRole ? `/${userRole.toLowerCase()}/dashboard` : "/landing"} className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
                                 <span className="material-symbols-outlined text-xl">school</span>
                             </div>
                             <span className="text-lg font-bold text-slate-900">Tutor Connect</span>
@@ -61,13 +80,13 @@ export function Navigation({ userRole, userName }: NavigationProps) {
 
                         <div className="hidden md:flex items-center gap-1">
                             {filteredNavItems.map((item) => {
-                                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
                                 return (
                                     <Link
                                         key={item.href}
                                         href={item.href}
                                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                                            ? 'bg-primary text-white'
+                                            ? 'bg-emerald-600 text-white'
                                             : 'text-slate-700 hover:bg-slate-100'
                                             }`}
                                     >
@@ -103,7 +122,7 @@ export function Navigation({ userRole, userName }: NavigationProps) {
                                 </Link>
                                 <Link
                                     href="/register"
-                                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
                                 >
                                     Get Started
                                 </Link>
