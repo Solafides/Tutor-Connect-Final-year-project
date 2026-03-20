@@ -8,12 +8,12 @@ export const authConfig = {
     callbacks: {
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user;
-            const isOnDashboard = nextUrl.pathname.startsWith('/student') ||
+            const isOnDashboard = (nextUrl.pathname.startsWith('/student') ||
                 nextUrl.pathname.startsWith('/tutor') ||
                 nextUrl.pathname.startsWith('/staff') ||
-                nextUrl.pathname.startsWith('/admin');
+                nextUrl.pathname.startsWith('/admin')) && !nextUrl.pathname.startsWith('/admin/login');
 
-            const isOnAuth = nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register');
+            const isOnAuth = nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register') || nextUrl.pathname.startsWith('/admin/login');
 
             if (isOnDashboard) {
                 if (isLoggedIn) return true;
