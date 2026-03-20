@@ -12,7 +12,7 @@ export default async function TutorDashboardPage() {
     }
 
     if (session.user.role !== 'TUTOR') {
-        redirect('/landing');
+        redirect('/');
     }
 
     // Fetch tutor profile first

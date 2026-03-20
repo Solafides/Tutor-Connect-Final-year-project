@@ -12,7 +12,7 @@ export default async function StudentDashboardPage() {
     }
 
     if (session.user.role !== 'STUDENT') {
-        redirect('/landing');
+        redirect('/');
     }
 
     // Fetch student profile
