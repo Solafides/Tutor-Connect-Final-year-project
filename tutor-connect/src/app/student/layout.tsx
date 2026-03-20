@@ -13,7 +13,7 @@ export default async function StudentLayout({
     }
 
     if (session.user.role !== 'STUDENT') {
-        redirect('/landing');
+        redirect('/');
     }
 
     return <>{children}</>;

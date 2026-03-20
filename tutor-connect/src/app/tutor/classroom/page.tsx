@@ -125,45 +125,7 @@ export default function TutorClassroomPage() {
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-slate-900">
 
-            {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('MANAGEMENT')}>
-                        <div className="bg-emerald-600 p-1.5 rounded-lg text-white shadow-sm">
-                            <Layout size={18} />
-                        </div>
-                        <span className="font-bold text-lg tracking-tight">Tutor Connect</span>
-                    </div>
 
-                    <nav className="hidden md:flex items-center gap-1 ml-4">
-                        <button onClick={() => setView('MANAGEMENT')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${view === 'MANAGEMENT' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 hover:bg-slate-50'}`}>
-                            My Classrooms
-                        </button>
-                        <button className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50">
-                            Earnings
-                        </button>
-                    </nav>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {view === 'CLASSROOM' && (
-                        <button
-                            onClick={toggleMeeting}
-                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl font-bold transition-all text-sm shadow-lg shadow-emerald-100 active:scale-95"
-                        >
-                            <Video size={18} /> Start Session
-                        </button>
-                    )}
-                    {view === 'MANAGEMENT' && (
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl font-bold transition-all text-sm shadow-lg shadow-emerald-100 active:scale-95"
-                        >
-                            <PlusCircle size={18} /> Create Class
-                        </button>
-                    )}
-                </div>
-            </header>
 
             <main className="flex-1 overflow-hidden relative">
 
@@ -193,6 +155,12 @@ export default function TutorClassroomPage() {
                                         : "You haven't created any classes yet. Click below to get started."}
                                 </p>
                             </div>
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl font-bold transition-all text-sm shadow-lg shadow-emerald-100 active:scale-95"
+                            >
+                                <PlusCircle size={18} /> Create Class
+                            </button>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -264,9 +232,17 @@ export default function TutorClassroomPage() {
                                     </div>
                                 </div>
                             </div>
-                            <button className="p-3 hover:bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-600 transition-all">
-                                <Settings size={20} />
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={toggleMeeting}
+                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold transition-all text-sm shadow-sm active:scale-95"
+                                >
+                                    <Video size={18} /> Start Session
+                                </button>
+                                <button className="p-3 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-600 transition-all">
+                                    <Settings size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Class Content */}

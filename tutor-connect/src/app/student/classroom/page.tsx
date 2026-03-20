@@ -130,44 +130,7 @@ export default function StudentClassroomPage() {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-slate-900">
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('LIST')}>
-                        <div className={`${brandGreen} p-1.5 rounded-lg text-white shadow-sm`}>
-                            <Layout size={18} />
-                        </div>
-                        <span className="font-bold text-lg tracking-tight">Tutor Connect</span>
-                    </div>
 
-                    <nav className="hidden md:flex items-center gap-1 ml-4">
-                        <button onClick={() => setView('LIST')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${view === 'LIST' ? `${brandGreenText} ${brandGreenLight}` : 'text-slate-500 hover:bg-slate-50'}`}>
-                            My Learning
-                        </button>
-                        <button className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50">
-                            Bookings
-                        </button>
-                    </nav>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {view === 'CLASSROOM' && (
-                        <button
-                            onClick={toggleMeeting}
-                            className={`flex items-center gap-2 ${brandGreen} ${brandGreenHover} text-white px-5 py-2.5 rounded-2xl font-bold transition-all text-sm shadow-lg shadow-emerald-100 active:scale-95`}
-                        >
-                            <Video size={18} /> Join Session
-                        </button>
-                    )}
-                    {view === 'LIST' && (
-                        <button
-                            onClick={() => setShowJoinModal(true)}
-                            className={`flex items-center gap-2 ${brandGreen} ${brandGreenHover} text-white px-5 py-2.5 rounded-2xl font-bold transition-all text-sm shadow-lg shadow-emerald-100 active:scale-95`}
-                        >
-                            <PlusCircle size={18} /> Join Class
-                        </button>
-                    )}
-                </div>
-            </header>
 
             <main className="flex-1 overflow-hidden relative">
                 {isMeetingActive && (
@@ -185,13 +148,21 @@ export default function StudentClassroomPage() {
 
                 {view === 'LIST' && (
                     <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full h-full overflow-y-auto">
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Student Classroom</h2>
-                            <p className="text-slate-500 font-medium">
-                                {enrolledClasses.length > 0
-                                    ? `Continue your learning in ${enrolledClasses.length} active classes.`
-                                    : "You haven't joined any classes yet. Join one using a Class ID."}
-                            </p>
+                        <div className="mb-8 flex justify-between items-end">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Student Classroom</h2>
+                                <p className="text-slate-500 font-medium">
+                                    {enrolledClasses.length > 0
+                                        ? `Continue your learning in ${enrolledClasses.length} active classes.`
+                                        : "You haven't joined any classes yet. Join one using a Class ID."}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowJoinModal(true)}
+                                className={`flex items-center gap-2 ${brandGreen} ${brandGreenHover} text-white px-5 py-2.5 rounded-2xl font-bold transition-all text-sm shadow-lg shadow-emerald-100 active:scale-95`}
+                            >
+                                <PlusCircle size={18} /> Join Class
+                            </button>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -252,20 +223,28 @@ export default function StudentClassroomPage() {
 
                 {view === 'CLASSROOM' && selectedClass && (
                     <div className="flex-1 flex flex-col h-full bg-white animate-in fade-in duration-300">
-                        <div className="px-8 py-6 flex items-center gap-4 bg-white border-b border-slate-100">
-                            <button
-                                onClick={() => setView('LIST')}
-                                className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl text-slate-500 transition-all active:scale-90"
-                            >
-                                <ArrowLeft size={20} />
-                            </button>
-                            <div>
-                                <h2 className="text-2xl font-black text-slate-900 leading-tight">{selectedClass.title}</h2>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">Learning Room</span>
-                                    <span className="text-xs text-slate-400 font-medium tracking-tight">Tutor: {selectedClass.tutorName}</span>
+                        <div className="px-8 py-6 flex items-center justify-between bg-white border-b border-slate-100">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setView('LIST')}
+                                    className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl text-slate-500 transition-all active:scale-90"
+                                >
+                                    <ArrowLeft size={20} />
+                                </button>
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-900 leading-tight">{selectedClass.title}</h2>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">Learning Room</span>
+                                        <span className="text-xs text-slate-400 font-medium tracking-tight">Tutor: {selectedClass.tutorName}</span>
+                                    </div>
                                 </div>
                             </div>
+                            <button
+                                onClick={toggleMeeting}
+                                className={`flex items-center gap-2 ${brandGreen} ${brandGreenHover} text-white px-4 py-2 rounded-xl font-bold transition-all text-sm shadow-sm active:scale-95`}
+                            >
+                                <Video size={18} /> Join Session
+                            </button>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-8 max-w-5xl mx-auto w-full space-y-8">

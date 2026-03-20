@@ -1,5 +1,5 @@
 import React from 'react';
-import { auth } from '@/auth';
+import { auth, signOut } from '@/auth';
 import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -149,8 +149,11 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                 </nav>
 
                 <div className="p-4 border-t border-slate-100 mt-auto">
-                    <form action="/api/auth/signout" method="POST">
-                        <button type="submit" className="flex items-center gap-3 w-full p-3.5 rounded-xl hover:bg-red-50 transition-colors text-slate-500 hover:text-red-600 font-medium">
+                    <form action={async () => {
+                        "use server";
+                        await signOut({ redirectTo: '/' });
+                    }}>
+                        <button type="submit" className="flex items-center gap-3 w-full p-3.5 rounded-xl hover:bg-red-50 transition-colors text-slate-500 hover:text-red-600 font-medium text-left">
                             <LogOut size={18} />
                             <span className="text-sm font-bold">Sign Out</span>
                         </button>

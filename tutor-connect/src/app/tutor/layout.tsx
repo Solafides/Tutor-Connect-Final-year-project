@@ -13,7 +13,7 @@ export default async function TutorLayout({
     }
 
     if (session.user.role !== 'TUTOR') {
-        redirect('/landing');
+        redirect('/');
     }
 
     return <>{children}</>;

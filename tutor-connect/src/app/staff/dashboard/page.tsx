@@ -17,43 +17,11 @@ import {
     Eye
 } from 'lucide-react';
 
-// =========================================================================
-// ⚠️ 1. REAL IMPORTS FOR VS CODE (UNCOMMENT THESE IN YOUR PROJECT) ⚠️
-// =========================================================================
-/*
-import { auth } from '@/auth';
+import { auth, signOut } from '@/auth';
 import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
-*/
-
-// =========================================================================
-// 🛑 2. MOCK IMPORTS FOR CANVAS PREVIEW ONLY (DELETE THIS IN VS CODE) 🛑
-// =========================================================================
-const auth = async () => ({ user: { role: 'STAFF', name: 'Support Staff' } });
-const prisma = {
-    tutorProfile: {
-        findMany: async () => [
-            { id: 't1', fullName: 'Dr. Sarah Connor', subject: 'Advanced Physics', isVerified: false, createdAt: new Date(Date.now() - 86400000), user: { email: 'sarah.c@example.com' } },
-            { id: 't2', fullName: 'Michael Chen', subject: 'Mathematics', isVerified: false, createdAt: new Date(Date.now() - 172800000), user: { email: 'm.chen@example.com' } },
-            { id: 't3', fullName: 'Elena Rodriguez', subject: 'Chemistry', isVerified: true, createdAt: new Date(Date.now() - 500000000), user: { email: 'elena.r@example.com' } }
-        ],
-        update: async () => ({})
-    },
-    booking: {
-        findMany: async () => [
-            { id: 'b1', subjectName: 'Calculus 101', status: 'PENDING', scheduledFor: new Date(Date.now() + 86400000), totalAmount: 450, student: { fullName: 'John Doe' }, tutor: { fullName: 'Michael Chen' } },
-            { id: 'b2', subjectName: 'Quantum Mechanics', status: 'ACCEPTED', scheduledFor: new Date(Date.now() + 172800000), totalAmount: 600, student: { fullName: 'Alice Smith' }, tutor: { fullName: 'Dr. Sarah Connor' } },
-            { id: 'b3', subjectName: 'Organic Chemistry', status: 'COMPLETED', scheduledFor: new Date(Date.now() - 86400000), totalAmount: 350, student: { fullName: 'Bob Johnson' }, tutor: { fullName: 'Elena Rodriguez' } }
-        ],
-        update: async () => ({})
-    }
-};
-const redirect = (path: string) => console.log('Redirecting to', path);
-const revalidatePath = (path: string) => console.log('Revalidating', path);
-const Link = ({ href, children, className }: any) => <a href={href} className={className}>{children}</a>;
-// =========================================================================
 
 export default async function StaffDashboardPage({ searchParams }: { searchParams: any }) {
     // 1. Authorization Check
@@ -71,7 +39,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     const [tutors, bookings] = await Promise.all([
         prisma.tutorProfile.findMany({
             orderBy: { createdAt: 'desc' },
-            include: { user: true }
+            include: { user: true, subjects: { include: { subject: true } } }
         }),
         prisma.booking.findMany({
             orderBy: { scheduledFor: 'desc' },
@@ -80,7 +48,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     ]);
 
     // 4. Calculate Stats
-    const pendingTutors = tutors.filter((t: any) => !t.isVerified);
+    const pendingTutors = tutors.filter((t: any) => t.verificationStatus === 'PENDING');
     const activeBookings = bookings.filter((b: any) => b.status === 'ACCEPTED' || b.status === 'PENDING');
 
     // 5. Filter Data based on Search
@@ -104,11 +72,13 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
         if (action === 'APPROVE') {
             await prisma.tutorProfile.update({
                 where: { id: tutorId },
-                data: { isVerified: true } // Assuming your schema uses isVerified boolean
+                data: { verificationStatus: 'APPROVED' }
             });
         } else {
-            // Logic for rejection (e.g., deleting profile or marking as rejected)
-            // await prisma.tutorProfile.delete({ where: { id: tutorId } });
+            await prisma.tutorProfile.update({
+                where: { id: tutorId },
+                data: { verificationStatus: 'REJECTED' }
+            });
         }
 
         revalidatePath('/staff/dashboard');
@@ -157,8 +127,11 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                 </nav>
 
                 <div className="p-4 border-t border-slate-100 mt-auto">
-                    <form action="/api/auth/signout" method="POST">
-                        <button type="submit" className="flex items-center gap-3 w-full p-3.5 rounded-xl hover:bg-red-50 transition-colors text-slate-500 hover:text-red-600 font-medium">
+                    <form action={async () => {
+                        "use server";
+                        await signOut({ redirectTo: '/' });
+                    }}>
+                        <button type="submit" className="flex items-center gap-3 w-full p-3.5 rounded-xl hover:bg-red-50 transition-colors text-slate-500 hover:text-red-600 font-medium text-left">
                             <LogOut size={18} />
                             <span className="text-sm font-bold">Sign Out</span>
                         </button>
@@ -250,7 +223,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                     </div>
                                                     <div>
                                                         <h4 className="font-bold text-sm text-slate-900">{tutor.fullName}</h4>
-                                                        <p className="text-xs text-slate-500">{tutor.subject}</p>
+                                                        <p className="text-xs text-slate-500">{tutor.subjects?.[0]?.subject?.name || 'Various Subjects'}</p>
                                                     </div>
                                                 </div>
                                                 <Link href="/staff/dashboard?tab=verifications" className="text-xs font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:border-blue-300 hover:text-blue-600 transition-colors">
@@ -313,7 +286,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                     <div className="text-xs text-slate-500">{tutor.user.email}</div>
                                                 </td>
                                                 <td className="p-4">
-                                                    <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-lg text-xs font-bold">{tutor.subject}</span>
+                                                    <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-lg text-xs font-bold">{tutor.subjects?.[0]?.subject?.name || 'Various Subjects'}</span>
                                                 </td>
                                                 <td className="p-4 text-sm font-medium text-slate-600">
                                                     {tutor.createdAt ? new Date(tutor.createdAt).toLocaleDateString() : 'N/A'}

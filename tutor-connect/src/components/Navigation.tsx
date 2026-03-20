@@ -1,22 +1,8 @@
 'use client';
 
-// =========================================================================
-// ⚠️ 1. REAL IMPORTS FOR VS CODE (UNCOMMENT THESE IN YOUR PROJECT) ⚠️
-// =========================================================================
-/*
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserRole } from '@prisma/client';
-*/
-
-// =========================================================================
-// 🛑 2. MOCK IMPORTS FOR CANVAS PREVIEW ONLY (DELETE THIS IN VS CODE) 🛑
-// =========================================================================
-const usePathname = () => '/admin/dashboard';
-const useRouter = () => ({ push: (path: string) => console.log(path), refresh: () => { } });
-const Link = ({ href, children, className }: any) => <a href={href} className={className}>{children}</a>;
-type UserRole = 'STUDENT' | 'TUTOR' | 'ADMIN' | 'STAFF';
-// =========================================================================
 
 interface NavigationProps {
     userRole?: UserRole;
@@ -29,7 +15,7 @@ export function Navigation({ userRole, userName }: NavigationProps) {
 
     // FIXED: Now we also check if the user is on the /login or /register page
     // This completely removes the "Tutor Connect" top header on these pages so your sidebar fits perfectly
-    const isHiddenRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/register');
+    const isHiddenRoute = pathname === '/' || pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/register');
 
     if (isHiddenRoute || userRole === 'ADMIN' || userRole === 'STAFF') {
         return null;
@@ -41,7 +27,7 @@ export function Navigation({ userRole, userName }: NavigationProps) {
                 method: 'POST',
             });
             if (response.ok) {
-                router.push('/landing');
+                router.push('/');
                 router.refresh();
             }
         } catch (error) {
@@ -71,7 +57,7 @@ export function Navigation({ userRole, userName }: NavigationProps) {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between">
                     <div className="flex items-center gap-8">
-                        <Link href={userRole ? `/${userRole.toLowerCase()}/dashboard` : "/landing"} className="flex items-center gap-2">
+                        <Link href={userRole ? `/${userRole.toLowerCase()}/dashboard` : "/"} className="flex items-center gap-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
                                 <span className="material-symbols-outlined text-xl">school</span>
                             </div>
