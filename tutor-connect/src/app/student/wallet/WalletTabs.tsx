@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 
 export default function WalletTabs({ initialWallet }: { initialWallet: any }) {
@@ -8,7 +8,26 @@ export default function WalletTabs({ initialWallet }: { initialWallet: any }) {
     const [isLoading, setIsLoading] = useState(false);
     const [amount, setAmount] = useState("");
     const [email, setEmail] = useState("");
-    const [bankAccount, setBankAccount] = useState("");
+    
+    // Withdrawal specific state
+    const [bankCode, setBankCode] = useState("");
+    const [accountName, setAccountName] = useState("");
+    const [accountNumber, setAccountNumber] = useState("");
+    const [banks, setBanks] = useState<any[]>([]);
+
+    useEffect(() => {
+        fetch("/api/payment/chapa/banks")
+            .then(res => res.json())
+            .then(data => {
+                if (data.banks) {
+                    setBanks(data.banks);
+                    if (data.banks.length > 0) {
+                        setBankCode(data.banks[0].id); // default select first bank
+                    }
+                }
+            })
+            .catch(err => console.error("Failed to fetch banks", err));
+    }, []);
 
     const tabs = [
         { id: "history", label: "History", icon: "history" },
@@ -47,11 +66,11 @@ export default function WalletTabs({ initialWallet }: { initialWallet: any }) {
             const res = await fetch("/api/wallet/withdraw", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ amount: parseFloat(amount), bankAccount }),
+                body: JSON.stringify({ amount: parseFloat(amount), bankCode, accountName, accountNumber }),
             });
             const data = await res.json();
             if (res.ok) {
-                alert("Withdrawal requested successfully!");
+                alert("Withdrawal/Transfer requested successfully!");
                 window.location.reload();
             } else {
                 alert(data.error || "Failed to withdraw");
@@ -88,6 +107,24 @@ export default function WalletTabs({ initialWallet }: { initialWallet: any }) {
         }
     };
 
+    const handleRefreshPending = async () => {
+        const pendingTxs = initialWallet.transactions.filter((tx: any) => tx.type === 'WITHDRAWAL' && (tx.paymentMetadata?.status === 'PENDING' || tx.paymentMetadata?.status === 'QUEUED'));
+        if (pendingTxs.length === 0) return;
+
+        setIsLoading(true);
+        try {
+            await Promise.all(pendingTxs.map(async (tx: any) => {
+                const ref = tx.referenceId;
+                if(ref) await fetch(`/api/payment/chapa/transfers/verify?tx_ref=${ref}`);
+            }));
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div>
             {/* Tab Navigation */}
@@ -114,7 +151,18 @@ export default function WalletTabs({ initialWallet }: { initialWallet: any }) {
             <div className="pt-6">
                 {activeTab === "history" && (
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-slate-900">Recent Transactions</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold text-slate-900">Recent Transactions</h3>
+                            {initialWallet.transactions.some((tx: any) => tx.type === 'WITHDRAWAL' && (tx.paymentMetadata?.status === 'PENDING' || tx.paymentMetadata?.status === 'QUEUED')) && (
+                                <button 
+                                    onClick={handleRefreshPending}
+                                    disabled={isLoading}
+                                    className="text-sm font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1 rounded-md"
+                                >
+                                    {isLoading ? "Refreshing..." : "Refresh Pending"}
+                                </button>
+                            )}
+                        </div>
                         {initialWallet.transactions.length === 0 ? (
                             <div className="text-center py-8 text-slate-500">
                                 <span className="material-symbols-outlined text-4xl mb-2 opacity-50">receipt_long</span>
@@ -227,19 +275,56 @@ export default function WalletTabs({ initialWallet }: { initialWallet: any }) {
                                 </div>
                             </div>
                             <div>
-                                <label htmlFor="bankAccount" className="block text-sm font-medium leading-6 text-slate-900">
-                                    Bank Account Details
+                                <label htmlFor="bankCode" className="block text-sm font-medium leading-6 text-slate-900">
+                                    Recipient Bank
+                                </label>
+                                <div className="mt-2">
+                                    <select
+                                        name="bankCode"
+                                        id="bankCode"
+                                        required
+                                        value={bankCode}
+                                        onChange={(e) => setBankCode(e.target.value)}
+                                        className="block w-full rounded-md border-0 py-1.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6"
+                                    >
+                                        <option value="" disabled>Select a bank</option>
+                                        {banks.map((bank) => (
+                                            <option key={bank.id} value={bank.id}>{bank.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="accountName" className="block text-sm font-medium leading-6 text-slate-900">
+                                    Account Name
                                 </label>
                                 <div className="mt-2">
                                     <input
                                         type="text"
-                                        name="bankAccount"
-                                        id="bankAccount"
+                                        name="accountName"
+                                        id="accountName"
                                         required
-                                        value={bankAccount}
-                                        onChange={(e) => setBankAccount(e.target.value)}
+                                        value={accountName}
+                                        onChange={(e) => setAccountName(e.target.value)}
                                         className="block w-full rounded-md border-0 py-1.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6"
-                                        placeholder="CBE 1000..."
+                                        placeholder="John Doe"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="accountNumber" className="block text-sm font-medium leading-6 text-slate-900">
+                                    Account Number
+                                </label>
+                                <div className="mt-2">
+                                    <input
+                                        type="text"
+                                        name="accountNumber"
+                                        id="accountNumber"
+                                        required
+                                        value={accountNumber}
+                                        onChange={(e) => setAccountNumber(e.target.value)}
+                                        className="block w-full rounded-md border-0 py-1.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6"
+                                        placeholder="1000123456789"
                                     />
                                 </div>
                             </div>

@@ -65,8 +65,8 @@ export async function POST(req: Request) {
             tx_ref: tx_ref,
             return_url: return_url,
             customization: {
-                title: 'Tutor Connect Wallet Top-up',
-                description: 'Deposit funds to your wallet for tutoring sessions'
+                title: 'Wallet Deposit',
+                description: 'Deposit funds to your wallet'
             }
         };
 
