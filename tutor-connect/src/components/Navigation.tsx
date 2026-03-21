@@ -7,15 +7,16 @@ import { UserRole } from '@prisma/client';
 interface NavigationProps {
     userRole?: UserRole;
     userName?: string;
+    isLandingPageNav?: boolean;
 }
 
-export function Navigation({ userRole, userName }: NavigationProps) {
+export function Navigation({ userRole, userName, isLandingPageNav = false }: NavigationProps) {
     const pathname = usePathname();
     const router = useRouter();
 
     // FIXED: Now we also check if the user is on the /login or /register page
     // This completely removes the "Tutor Connect" top header on these pages so your sidebar fits perfectly
-    const isHiddenRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/register');
+    const isHiddenRoute = (!isLandingPageNav && pathname === '/') || pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/register');
 
     if (isHiddenRoute || userRole === 'ADMIN' || userRole === 'STAFF') {
         return null;

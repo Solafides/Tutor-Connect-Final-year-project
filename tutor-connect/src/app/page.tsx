@@ -1,8 +1,13 @@
 import React from 'react';
+import { auth } from '@/auth';
+import { Navigation } from '@/components/Navigation';
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth();
+
   return (
     <>
+      <Navigation userRole={session?.user?.role} userName={session?.user?.name || undefined} isLandingPageNav={true} />
       <section className="relative overflow-hidden bg-background-light py-12 md:py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-y-12 lg:grid-cols-2 lg:gap-x-16 lg:items-center">
