@@ -15,7 +15,7 @@ export function Navigation({ userRole, userName }: NavigationProps) {
 
     // FIXED: Now we also check if the user is on the /login or /register page
     // This completely removes the "Tutor Connect" top header on these pages so your sidebar fits perfectly
-    const isHiddenRoute = pathname === '/' || pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/register');
+    const isHiddenRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/register');
 
     if (isHiddenRoute || userRole === 'ADMIN' || userRole === 'STAFF') {
         return null;
@@ -110,7 +110,7 @@ export function Navigation({ userRole, userName }: NavigationProps) {
                                     href="/register"
                                     className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
                                 >
-                                    Get Started
+                                    Sign Up
                                 </Link>
                             </>
                         )}
