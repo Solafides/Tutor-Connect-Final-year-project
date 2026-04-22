@@ -13,7 +13,7 @@ export const authConfig = {
                 nextUrl.pathname.startsWith('/staff') ||
                 nextUrl.pathname.startsWith('/admin')) && !nextUrl.pathname.startsWith('/admin/login');
 
-            const isOnAuth = nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register') || nextUrl.pathname.startsWith('/admin/login');
+    const isOnAuth = nextUrl.pathname === '/' || nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register') || nextUrl.pathname.startsWith('/admin/login');
 
             if (isOnDashboard) {
                 if (isLoggedIn) return true;

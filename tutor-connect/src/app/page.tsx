@@ -1,13 +1,8 @@
 import React from 'react';
-import { auth } from '@/auth';
-import { Navigation } from '@/components/Navigation';
 
 export default async function LandingPage() {
-  const session = await auth();
-
   return (
     <>
-      <Navigation userRole={session?.user?.role} userName={session?.user?.name || undefined} isLandingPageNav={true} />
       <section className="relative overflow-hidden bg-background-light py-12 md:py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-y-12 lg:grid-cols-2 lg:gap-x-16 lg:items-center">
@@ -30,7 +25,7 @@ export default async function LandingPage() {
                 Connect with expert tutors for 1-on-1 lessons tailored to your specific needs. Whether you need help with math, science, or learning a new language.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mb-10 w-full sm:w-auto">
-                <a href="/search" className="inline-flex justify-center items-center rounded-xl bg-primary px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/25 hover:bg-primary-dark transition-all hover:-translate-y-0.5 w-full sm:w-auto">
+                <a href="/login" className="inline-flex justify-center items-center rounded-xl bg-primary px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/25 hover:bg-primary-dark transition-all hover:-translate-y-0.5 w-full sm:w-auto">
                   Find a Tutor
                 </a>
                 <a href="/register" className="inline-flex justify-center items-center rounded-xl bg-white px-8 py-3.5 text-base font-bold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:text-primary transition-all hover:-translate-y-0.5 w-full sm:w-auto">

@@ -84,7 +84,6 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
 
         await prisma.user.create({
             data: {
-                name,
                 email,
                 passwordHash: hashedPassword,
                 role: 'STAFF', // Hardcoded to STAFF as requested
@@ -104,7 +103,6 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
             orderBy: { createdAt: 'desc' },
             select: {
                 id: true,
-                name: true,
                 email: true,
                 role: true,
                 createdAt: true,

@@ -1,25 +1,40 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useState } from 'react';
 import { authenticate } from '@/lib/actions';
 import Link from 'next/link';
 
-function LoginButton() {
-    const { pending } = useFormStatus();
-
-    return (
-        <button
-            type="submit"
-            disabled={pending}
-            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-            {pending ? 'Signing in...' : 'Sign in'}
-        </button>
-    );
-}
-
 export default function LoginPage() {
-    const [errorMessage, dispatch] = useFormState(authenticate, undefined);
+    const [errorMessage, setErrorMessage] = useState<string | undefined>('');
+    const[pending, setPending] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setPending(true);
+        setErrorMessage('');
+
+        const formData = new FormData(e.currentTarget);
+
+        try {
+            // Call the server action manually instead of using useFormState
+            const result = await authenticate(undefined, formData);
+            
+            if (result) {
+                // If it returns a string, it means there was an error (e.g. wrong password)
+                setErrorMessage(result);
+                setPending(false);
+            } else {
+                // If there is no error, login was successful! 
+                // Force a hard reload so the layout and URL update correctly.
+                window.location.reload();
+            }
+        } catch (error) {
+            // Next.js throws redirects as errors behind the scenes.
+            // If we catch it here, it means login succeeded and it is trying to redirect.
+            // Forcing a reload fixes the missing header and URL issue instantly!
+            window.location.reload();
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -28,7 +43,7 @@ export default function LoginPage() {
                 <p className="mt-2 text-sm text-text-sub">Please sign in to your account</p>
             </div>
 
-            <form action={dispatch} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                     <label htmlFor="email" className="block text-sm font-medium text-text-main">
                         Email address
@@ -80,7 +95,13 @@ export default function LoginPage() {
                     </div>
                 )}
 
-                <LoginButton />
+                <button
+                    type="submit"
+                    disabled={pending}
+                    className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    {pending ? 'Signing in...' : 'Sign in'}
+                </button>
             </form>
 
             <div className="mt-6">

@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export default async function TutorDashboardPage() {
     const session = await auth();
-    
+
     if (!session?.user) {
         redirect('/login');
     }
@@ -58,7 +58,7 @@ export default async function TutorDashboardPage() {
             },
         }),
         prisma.booking.findMany({
-            where: { 
+            where: {
                 tutorId: tutorProfile.id,
                 status: 'PENDING',
             },
@@ -82,41 +82,60 @@ export default async function TutorDashboardPage() {
     return (
         <DashboardLayout>
             <div className="space-y-6">
-                {/* Header */}
+                {/* Header with Verification Badge */}
+{/* Header with Verification Badge */}
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">
+                    <h1 className="text-3xl font-bold text-slate-900 flex flex-wrap items-center gap-3">
                         Welcome back, {tutorProfile.fullName}!
+                        
+                        {/* Verification Badge after the name */}
+                        {tutorProfile.verificationStatus === 'APPROVED' ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800 border border-green-200">
+                                <span className="material-symbols-outlined text-base">verified</span>
+                                Verified
+                            </span>
+                        ) : tutorProfile.verificationStatus === 'PENDING' ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800 border border-yellow-200">
+                                <span className="material-symbols-outlined text-base">hourglass_empty</span>
+                                Pending Verification
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-800 border border-red-200">
+                                <span className="material-symbols-outlined text-base">error</span>
+                                Not Verified
+                            </span>
+                        )}
                     </h1>
                     <p className="mt-2 text-slate-600">
                         Manage your bookings, earnings, and tutoring sessions.
                     </p>
                 </div>
 
-                {/* Verification Status */}
+                {/* Verification Status Warning Banner */}
                 {tutorProfile.verificationStatus !== 'APPROVED' && (
-                    <div className={`rounded-xl p-4 border-2 ${
-                        tutorProfile.verificationStatus === 'PENDING'
+                    <div className={`rounded-xl p-4 border-2 ${tutorProfile.verificationStatus === 'PENDING'
                             ? 'bg-yellow-50 border-yellow-200'
                             : 'bg-red-50 border-red-200'
-                    }`}>
+                        }`}>
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="font-semibold text-slate-900">
-                                    {tutorProfile.verificationStatus === 'PENDING' 
-                                        ? 'Verification Pending' 
-                                        : 'Verification Rejected'}
+                                    {tutorProfile.verificationStatus === 'PENDING'
+                                        ? 'Verification Pending'
+                                        : 'Verification Required'}
                                 </h3>
                                 <p className="text-sm text-slate-600 mt-1">
                                     {tutorProfile.verificationStatus === 'PENDING'
-                                        ? 'Your profile is under review. You can still update your profile.'
-                                        : tutorProfile.rejectionReason || 'Your verification was rejected. Please update your profile and resubmit.'}
+                                        ? 'Your profile is under review. You can still update your profile settings.'
+                                        : tutorProfile.rejectionReason || 'You must verify your account to become visible to students.'}
                                 </p>
                             </div>
+                            {/* Link updated to point to the new verification page */}
                             <Link
-                                href="/tutor/profile"
-                                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+                                href="/tutor/verification"
+                                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark whitespace-nowrap"
                             >
-                                Update Profile
+                                {tutorProfile.verificationStatus === 'REJECTED' ? 'Resubmit Documents' : 'Manage Verification'}
                             </Link>
                         </div>
                     </div>
@@ -289,15 +308,14 @@ export default async function TutorDashboardPage() {
                                         </div>
                                         <div className="text-right">
                                             <span
-                                                className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
-                                                    booking.status === 'ACCEPTED'
+                                                className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${booking.status === 'ACCEPTED'
                                                         ? 'bg-green-100 text-green-800'
                                                         : booking.status === 'COMPLETED'
-                                                        ? 'bg-blue-100 text-blue-800'
-                                                        : booking.status === 'PENDING'
-                                                        ? 'bg-yellow-100 text-yellow-800'
-                                                        : 'bg-red-100 text-red-800'
-                                                }`}
+                                                            ? 'bg-blue-100 text-blue-800'
+                                                            : booking.status === 'PENDING'
+                                                                ? 'bg-yellow-100 text-yellow-800'
+                                                                : 'bg-red-100 text-red-800'
+                                                    }`}
                                             >
                                                 {booking.status}
                                             </span>
