@@ -1,19 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef, FormEvent } from 'react';
+import React, { useState, FormEvent } from 'react';
 import {
     BookOpen,
     Video,
     Plus,
-    FileText,
     CheckCircle,
     Clock,
     ChevronRight,
-    Download,
-    Send,
-    User,
-    Layout,
-    MessageSquare,
     ClipboardList,
     X,
     PlusCircle,
@@ -27,7 +21,6 @@ import {
  * Path: src/app/tutor/classroom/page.tsx
  */
 
-
 import { createClassroom, ClassroomData } from '@/app/actions/classroom';
 
 interface Classroom extends ClassroomData { }
@@ -36,11 +29,10 @@ type ViewMode = 'MANAGEMENT' | 'CLASSROOM';
 type TabMode = 'lessons' | 'tasks' | 'resources';
 
 export default function ClassroomClient({ initialClassrooms }: { initialClassrooms: Classroom[] }) {
-    const [view, setView] = useState<ViewMode>('MANAGEMENT');
-    const [activeTab, setActiveTab] = useState<TabMode>('lessons');
+    const[view, setView] = useState<ViewMode>('MANAGEMENT');
+    const[activeTab, setActiveTab] = useState<TabMode>('lessons');
     const [isMeetingActive, setIsMeetingActive] = useState<boolean>(false);
     const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
-    const jitsiContainerRef = useRef<HTMLDivElement>(null);
 
     // Brand colors (Emerald 500)
     const brandGreen = "bg-[#10b981]";
@@ -49,52 +41,8 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
     const brandGreenLight = "bg-[#ecfdf5]";
 
     // Use initial data from server
-    const [myClasses, setMyClasses] = useState<Classroom[]>(initialClassrooms);
+    const[myClasses, setMyClasses] = useState<Classroom[]>(initialClassrooms);
     const [selectedClass, setSelectedClass] = useState<Classroom | null>(null);
-
-    /* ... Jitsi useEffect (unchanged) ... */
-    useEffect(() => {
-        let api: any = null;
-
-        if (isMeetingActive && selectedClass) {
-            const loadJitsiScript = (): Promise<void> => {
-                return new Promise((resolve) => {
-                    if ((window as any).JitsiMeetExternalAPI) {
-                        resolve();
-                        return;
-                    }
-                    const script = document.createElement("script");
-                    script.src = "https://meet.jit.si/external_api.js";
-                    script.async = true;
-                    script.onload = () => resolve();
-                    document.body.appendChild(script);
-                });
-            };
-
-            loadJitsiScript().then(() => {
-                if (!jitsiContainerRef.current) return;
-
-                const domain = "meet.jit.si";
-                const options = {
-                    roomName: `TutorConnect_${selectedClass.id}`,
-                    width: "100%",
-                    height: "100%",
-                    parentNode: jitsiContainerRef.current,
-                    userInfo: { displayName: "Instructor (Tutor)" },
-                    configOverwrite: { startWithAudioMuted: true },
-                    interfaceConfigOverwrite: {
-                        TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup', 'chat', 'settings', 'raisehand', 'tileview'],
-                    }
-                };
-                api = new (window as any).JitsiMeetExternalAPI(domain, options);
-                api.addEventListener('videoConferenceLeft', () => setIsMeetingActive(false));
-            });
-        }
-
-        return () => {
-            if (api) api.dispose();
-        };
-    }, [isMeetingActive, selectedClass]);
 
     const handleEnterClass = (cls: Classroom) => {
         setSelectedClass(cls);
@@ -123,16 +71,9 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
         const result = await createClassroom(formData);
 
         if (result.error) {
-            // Revert changes on error (simple reload or filter out temp)
+            // Revert changes on error 
             alert("Failed to create class: " + result.error);
             setMyClasses(myClasses.filter(c => c.id !== tempId));
-        } else {
-            // Success - server revalidatePath will refresh data on next navigation/refresh
-            // For immediate UX, we keep optimistic update, or better, 
-            // in a real app query would re-run.
-            // Since we are using initialClassrooms passed as props, we need a way to refresh.
-            // But revalidatePath refreshes the recursive server component tree? only on soft navigation.
-            // We'll leave optimistic update for now.
         }
     };
 
@@ -140,28 +81,40 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
 
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-slate-900">
-
-
             <main className="flex-1 overflow-hidden relative">
-                {isMeetingActive && (
-                    <div className="absolute inset-0 z-50 bg-black flex flex-col">
-                        <div className="bg-slate-900 p-3 flex justify-between items-center text-white">
+                
+                {/* --- FULL SCREEN VIDEO CALL OVERLAY --- */}
+                {isMeetingActive && selectedClass && (
+                    <div className="absolute inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-300">
+                        {/* Video Call Header */}
+                        <div className="bg-slate-900 p-4 flex justify-between items-center text-white border-b border-slate-800">
                             <div className="flex items-center gap-3">
-                                <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]"></div>
-                                <span className="text-sm font-bold tracking-tight">Live: {selectedClass?.title}</span>
+                                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+                                <span className="text-sm font-bold tracking-wide">Live Session: {selectedClass.title}</span>
                             </div>
-                            <button onClick={toggleMeeting} className="p-2 bg-slate-800 rounded-xl hover:bg-red-600 transition-colors"><X size={18} /></button>
+                            <button 
+                                onClick={toggleMeeting} 
+                                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-bold transition-colors"
+                            >
+                                <X size={18} /> End Class
+                            </button>
                         </div>
-                        <div ref={jitsiContainerRef} className="flex-1" />
+                        {/* Jitsi iframe integration (Stable Next.js approach) */}
+                        <iframe 
+                            src={`https://meet.jit.si/TutorConnect_Class_${selectedClass.id.replace(/[^a-zA-Z0-9]/g, "")}`}
+                            allow="camera; microphone; fullscreen; display-capture"
+                            className="w-full flex-1 border-0"
+                        />
                     </div>
                 )}
 
+                {/* --- CLASSROOM MANAGEMENT VIEW --- */}
                 {view === 'MANAGEMENT' && (
                     <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full h-full overflow-y-auto">
                         <div className="mb-8 flex justify-between items-end">
                             <div>
                                 <h2 className="text-2xl font-black text-slate-800 tracking-tight">Tutor Dashboard</h2>
-                                <p className="text-slate-500 font-medium">Manage your {myClasses.length} active classrooms.</p>
+                                <p className="text-slate-500 font-medium">Manage your {myClasses?.length || 0} active classrooms.</p>
                             </div>
                             <button
                                 onClick={() => setShowCreateModal(true)}
@@ -172,7 +125,7 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {myClasses.map((cls) => (
+                            {myClasses?.map((cls) => (
                                 <div key={cls.id} className="bg-white rounded-[2.5rem] border border-slate-200 p-7 hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden">
                                     <div className="flex justify-between items-start mb-6">
                                         <div className={`${brandGreenLight} ${brandGreenText} p-4 rounded-3xl group-hover:${brandGreen} group-hover:text-white transition-all duration-300`}>
@@ -185,7 +138,7 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
                                         <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-1.5 rounded-full uppercase tracking-widest mb-2 inline-block">
                                             {cls.subject}
                                         </span>
-                                        <h3 className="text-xl font-bold text-slate-900 group-hover:${brandGreenText} transition-colors leading-tight">
+                                        <h3 className={`text-xl font-bold text-slate-900 group-hover:${brandGreenText} transition-colors leading-tight`}>
                                             {cls.title}
                                         </h3>
                                     </div>
@@ -207,7 +160,7 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
                                         </div>
                                         <button
                                             onClick={() => handleEnterClass(cls)}
-                                            className="bg-slate-900 text-white p-3.5 rounded-[1.25rem] hover:${brandGreen} transition-all shadow-xl active:scale-90"
+                                            className={`bg-slate-900 text-white p-3.5 rounded-[1.25rem] hover:${brandGreen} transition-all shadow-xl active:scale-90`}
                                         >
                                             <ChevronRight size={22} />
                                         </button>
@@ -228,9 +181,10 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
                     </div>
                 )}
 
-                {view === 'CLASSROOM' && selectedClass && (
+                {/* --- INDIVIDUAL CLASSROOM VIEW --- */}
+                {view === 'CLASSROOM' && selectedClass && !isMeetingActive && (
                     <div className="flex-1 flex flex-col h-full bg-white animate-in fade-in duration-300">
-                        <div className="px-8 py-6 flex items-center justify-between bg-white border-b border-slate-100">
+                        <div className="px-8 py-6 flex items-center justify-between bg-white border-b border-slate-100 shadow-sm">
                             <div className="flex items-center gap-4">
                                 <button
                                     onClick={() => setView('MANAGEMENT')}
@@ -246,9 +200,11 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Start Video Session Button */}
                             <button
                                 onClick={toggleMeeting}
-                                className={`flex items-center gap-2 ${brandGreen} ${brandGreenHover} text-white px-4 py-2 rounded-xl font-bold transition-all text-sm shadow-sm active:scale-95`}
+                                className={`flex items-center gap-2 ${brandGreen} ${brandGreenHover} text-white px-5 py-2.5 rounded-xl font-bold transition-all text-sm shadow-md shadow-emerald-500/20 active:scale-95`}
                             >
                                 <Video size={18} /> Start Session
                             </button>
@@ -263,7 +219,7 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
 
                             {activeTab === 'lessons' && (
                                 <div className="space-y-4 pb-20">
-                                    <button className={`w-full py-10 border-2 border-dashed border-slate-200 rounded-[2.5rem] text-slate-400 font-bold hover:border-emerald-300 hover:bg-emerald-50 transition-all flex flex-col items-center gap-2 group`}>
+                                    <button className="w-full py-10 border-2 border-dashed border-slate-200 rounded-[2.5rem] text-slate-400 font-bold hover:border-emerald-300 hover:bg-emerald-50 transition-all flex flex-col items-center gap-2 group">
                                         <Plus size={24} className="group-hover:scale-110 transition-transform" />
                                         Add Lesson Chapter
                                     </button>
@@ -285,6 +241,7 @@ export default function ClassroomClient({ initialClassrooms }: { initialClassroo
                     </div>
                 )}
 
+                {/* --- CREATE NEW CLASS MODAL --- */}
                 {showCreateModal && (
                     <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
                         <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-10 animate-in zoom-in-95 duration-200">

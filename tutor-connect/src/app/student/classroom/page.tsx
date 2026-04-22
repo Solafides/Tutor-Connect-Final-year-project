@@ -1,31 +1,24 @@
 "use client";
 
-import React, { useState, useEffect, useRef, FormEvent } from 'react';
+import React, { useState, FormEvent } from 'react';
 import {
     BookOpen,
     Video,
-    FileText,
     CheckCircle,
     Clock,
     ChevronRight,
-    Download,
     Send,
     User,
-    Layout,
-    MessageSquare,
     ClipboardList,
     X,
     PlusCircle,
     ArrowLeft,
-    Users,
-    Hash,
-    Search
+    Hash
 } from 'lucide-react';
 
 /**
  * Tutor-Connect Student Classroom Page
  * Path: src/app/student/classroom/page.tsx
- * Updated: Starting with an empty state, dynamic joining.
  */
 
 interface Classroom {
@@ -41,11 +34,10 @@ type ViewMode = 'LIST' | 'CLASSROOM';
 type TabMode = 'lessons' | 'tasks' | 'resources';
 
 export default function StudentClassroomPage() {
-    const [view, setView] = useState<ViewMode>('LIST');
+    const[view, setView] = useState<ViewMode>('LIST');
     const [activeTab, setActiveTab] = useState<TabMode>('lessons');
     const [isMeetingActive, setIsMeetingActive] = useState<boolean>(false);
     const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
-    const jitsiContainerRef = useRef<HTMLDivElement>(null);
 
     // Brand colors (Emerald 500)
     const brandGreen = "bg-[#10b981]";
@@ -54,52 +46,8 @@ export default function StudentClassroomPage() {
     const brandGreenLight = "bg-[#ecfdf5]";
 
     // Dynamic State: Initialized as empty so it only shows classes after joining
-    const [enrolledClasses, setEnrolledClasses] = useState<Classroom[]>([]);
-
+    const[enrolledClasses, setEnrolledClasses] = useState<Classroom[]>([]);
     const [selectedClass, setSelectedClass] = useState<Classroom | null>(null);
-
-    useEffect(() => {
-        let api: any = null;
-
-        if (isMeetingActive && selectedClass) {
-            const loadJitsiScript = (): Promise<void> => {
-                return new Promise((resolve) => {
-                    if ((window as any).JitsiMeetExternalAPI) {
-                        resolve();
-                        return;
-                    }
-                    const script = document.createElement("script");
-                    script.src = "https://meet.jit.si/external_api.js";
-                    script.async = true;
-                    script.onload = () => resolve();
-                    document.body.appendChild(script);
-                });
-            };
-
-            loadJitsiScript().then(() => {
-                if (!jitsiContainerRef.current) return;
-
-                const domain = "meet.jit.si";
-                const options = {
-                    roomName: `TutorConnect_${selectedClass.id}`,
-                    width: "100%",
-                    height: "100%",
-                    parentNode: jitsiContainerRef.current,
-                    userInfo: { displayName: "Student" },
-                    configOverwrite: { startWithAudioMuted: true },
-                    interfaceConfigOverwrite: {
-                        TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup', 'chat', 'raisehand', 'tileview'],
-                    }
-                };
-                api = new (window as any).JitsiMeetExternalAPI(domain, options);
-                api.addEventListener('videoConferenceLeft', () => setIsMeetingActive(false));
-            });
-        }
-
-        return () => {
-            if (api) api.dispose();
-        };
-    }, [isMeetingActive, selectedClass]);
 
     const handleEnterClass = (cls: Classroom) => {
         setSelectedClass(cls);
@@ -112,7 +60,7 @@ export default function StudentClassroomPage() {
         const classId = (formData.get('classId') as string).toUpperCase();
 
         // Logic for Use Case 21: Join Class
-        // This now dynamically adds the class to your local list
+        // This dynamically adds the class to your local list
         const newEnrollment: Classroom = {
             id: classId,
             title: `Classroom ${classId}`,
@@ -130,22 +78,34 @@ export default function StudentClassroomPage() {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-slate-900">
-
-
             <main className="flex-1 overflow-hidden relative">
-                {isMeetingActive && (
-                    <div className="absolute inset-0 z-50 bg-black flex flex-col">
-                        <div className="bg-slate-900 p-3 flex justify-between items-center text-white">
+                
+                {/* --- FULL SCREEN VIDEO CALL OVERLAY --- */}
+                {isMeetingActive && selectedClass && (
+                    <div className="absolute inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-300">
+                        {/* Video Call Header */}
+                        <div className="bg-slate-900 p-4 flex justify-between items-center text-white border-b border-slate-800">
                             <div className="flex items-center gap-3">
-                                <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]"></div>
-                                <span className="text-sm font-bold tracking-tight">Live Session: {selectedClass?.title}</span>
+                                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+                                <span className="text-sm font-bold tracking-wide">Live Session: {selectedClass.title}</span>
                             </div>
-                            <button onClick={toggleMeeting} className="p-2 bg-slate-800 rounded-xl hover:bg-red-600 transition-colors"><X size={18} /></button>
+                            <button 
+                                onClick={toggleMeeting} 
+                                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-bold transition-colors"
+                            >
+                                <X size={18} /> Leave Class
+                            </button>
                         </div>
-                        <div ref={jitsiContainerRef} className="flex-1" />
+                        {/* Jitsi iframe integration (Stable Next.js approach) */}
+                        <iframe 
+                            src={`https://meet.jit.si/TutorConnect_Class_${selectedClass.id.replace(/[^a-zA-Z0-9]/g, "")}`}
+                            allow="camera; microphone; fullscreen; display-capture"
+                            className="w-full flex-1 border-0"
+                        />
                     </div>
                 )}
 
+                {/* --- CLASSROOM LIST VIEW --- */}
                 {view === 'LIST' && (
                     <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full h-full overflow-y-auto">
                         <div className="mb-8 flex justify-between items-end">
@@ -178,7 +138,7 @@ export default function StudentClassroomPage() {
                                         <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-1.5 rounded-full uppercase tracking-widest mb-2 inline-block">
                                             {cls.subject}
                                         </span>
-                                        <h3 className="text-xl font-bold text-slate-900 group-hover:${brandGreenText} transition-colors leading-tight">
+                                        <h3 className={`text-xl font-bold text-slate-900 group-hover:${brandGreenText} transition-colors leading-tight`}>
                                             {cls.title}
                                         </h3>
                                     </div>
@@ -200,7 +160,7 @@ export default function StudentClassroomPage() {
                                         </div>
                                         <button
                                             onClick={() => handleEnterClass(cls)}
-                                            className="bg-slate-900 text-white p-3.5 rounded-[1.25rem] hover:${brandGreen} transition-all shadow-xl active:scale-90"
+                                            className={`bg-slate-900 text-white p-3.5 rounded-[1.25rem] hover:${brandGreen} transition-all shadow-xl active:scale-90`}
                                         >
                                             <ChevronRight size={22} />
                                         </button>
@@ -221,7 +181,8 @@ export default function StudentClassroomPage() {
                     </div>
                 )}
 
-                {view === 'CLASSROOM' && selectedClass && (
+                {/* --- INDIVIDUAL CLASSROOM VIEW --- */}
+                {view === 'CLASSROOM' && selectedClass && !isMeetingActive && (
                     <div className="flex-1 flex flex-col h-full bg-white animate-in fade-in duration-300">
                         <div className="px-8 py-6 flex items-center justify-between bg-white border-b border-slate-100">
                             <div className="flex items-center gap-4">
@@ -284,6 +245,7 @@ export default function StudentClassroomPage() {
                     </div>
                 )}
 
+                {/* --- JOIN CLASSROOM MODAL --- */}
                 {showJoinModal && (
                     <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
                         <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-10 animate-in zoom-in-95 duration-200">
