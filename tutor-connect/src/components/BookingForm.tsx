@@ -56,19 +56,20 @@ export function BookingForm({ tutorId, tutorName, hourlyRate, subjects }: Bookin
                 <label htmlFor="subjectName" className="block text-sm font-medium text-slate-700 mb-1">
                     Subject
                 </label>
-                <select
+                <input
+                    type="text"
                     name="subjectName"
                     id="subjectName"
+                    list="subject-options"
                     required
+                    placeholder={subjects.length > 0 ? "Select or type a subject" : "e.g. Mathematics"}
                     className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                    <option value="">Select a subject</option>
+                />
+                <datalist id="subject-options">
                     {subjects.map((sub) => (
-                        <option key={sub.id} value={sub.name}>
-                            {sub.name}
-                        </option>
+                        <option key={sub.id} value={sub.name} />
                     ))}
-                </select>
+                </datalist>
             </div>
 
             <div>

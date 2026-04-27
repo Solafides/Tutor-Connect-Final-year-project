@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
+import ConfirmLessonButton from '@/components/ConfirmLessonButton';
 
 export default async function StudentDashboardPage() {
     const session = await auth();
@@ -83,7 +84,7 @@ export default async function StudentDashboardPage() {
                         href="/student/wallet"
                         className="mt-4 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-800"
                     >
-                        Manage wallet →
+                        View history →
                     </Link>
                 </div>
 
@@ -203,6 +204,11 @@ export default async function StudentDashboardPage() {
                                         <p className="mt-1 text-sm font-medium text-slate-900">
                                             {Number(booking.totalAmount).toFixed(2)} ETB
                                         </p>
+                                        {booking.status === 'ACCEPTED' && booking.escrowStatus === 'HELD' && (
+                                            <div className="mt-2">
+                                                <ConfirmLessonButton bookingId={booking.id} />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -237,12 +243,12 @@ export default async function StudentDashboardPage() {
                     <div className="flex items-center gap-4">
                         <div className="rounded-lg bg-emerald-50 p-3 group-hover:bg-emerald-600 transition-colors">
                             <span className="material-symbols-outlined text-emerald-600 group-hover:text-white text-2xl">
-                                account_balance_wallet
+                                receipt_long
                             </span>
                         </div>
                         <div>
-                            <h3 className="font-semibold text-slate-900">Manage Wallet</h3>
-                            <p className="text-sm text-slate-600">Deposit funds or view transactions</p>
+                            <h3 className="font-semibold text-slate-900">Transaction History</h3>
+                            <p className="text-sm text-slate-600">View your payment history</p>
                         </div>
                     </div>
                 </Link>

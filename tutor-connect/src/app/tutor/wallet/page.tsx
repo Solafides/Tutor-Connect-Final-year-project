@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import DashboardLayout from '@/components/DashboardLayout';
+import WithdrawalForm from '@/components/WithdrawalForm';
 
 export default async function TutorWalletPage() {
     const session = await auth();
@@ -45,32 +46,7 @@ export default async function TutorWalletPage() {
                         {/* Withdrawal Request Form */}
                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                             <h3 className="text-lg font-semibold text-slate-900 mb-4">Request Withdrawal</h3>
-
-                            <form className="space-y-4" action="/api/wallet/withdraw" method="POST">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Amount (ETB)</label>
-                                    <input
-                                        type="number"
-                                        name="amount"
-                                        max={balance}
-                                        min="100"
-                                        placeholder="e.g. 500"
-                                        required
-                                        className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Transfer Method</label>
-                                    <select name="provider" className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-primary focus:ring-1 focus:ring-primary">
-                                        <option value="telebirr">Telebirr</option>
-                                        <option value="cbe">CBE</option>
-                                    </select>
-                                </div>
-                                <button type="submit" className="w-full bg-primary text-white py-2 rounded-lg font-semibold">
-                                    Withdraw Funds
-                                </button>
-                            </form>
+                            <WithdrawalForm balance={balance} />
                         </div>
                     </div>
                 </div>

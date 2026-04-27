@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { bookingSchema } from '@/lib/validations';
 import { redirect } from 'next/navigation';
+import crypto from 'crypto';
 
 export async function createBooking(formData: FormData) {
     const session = await auth();
@@ -64,9 +65,9 @@ export async function createBooking(formData: FormData) {
             platformFee,
             tutorEarning,
             status: 'PENDING',
-            escrowStatus: 'HELD',
+            isPaid: false,
         }
     });
 
-    redirect('/student/bookings');
+    redirect(`/student/bookings`);
 }

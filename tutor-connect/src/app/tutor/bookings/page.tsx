@@ -94,7 +94,7 @@ export default async function TutorBookingsPage() {
                                             </Link>
                                             {booking.status === 'PENDING' && (
                                                 <Link
-                                                    href={`/tutor/bookings/${booking.id}/respond`}
+                                                    href={`/tutor/bookings/${booking.id}`}
                                                     className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition"
                                                 >
                                                     Respond

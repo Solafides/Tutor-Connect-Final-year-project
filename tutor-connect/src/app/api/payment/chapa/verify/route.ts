@@ -47,18 +47,22 @@ export async function GET(req: Request) {
             
             // Using a Prisma transaction to ensure atomicity
             await prisma.$transaction(async (tx) => {
-                const updatedWallet = await tx.wallet.update({
-                    where: { id: transaction.walletId },
-                    data: { balance: { increment: transaction.amount } }
-                });
-
                 await tx.transaction.update({
                     where: { id: transaction.id },
                     data: {
-                        balanceAfter: updatedWallet.balance,
                         paymentMetadata: { status: 'COMPLETED', chapaRef: chapaData.data.reference },
                     }
                 });
+
+                if (metadata.bookingId) {
+                    await tx.booking.update({
+                        where: { id: metadata.bookingId },
+                        data: {
+                            isPaid: true,
+                            escrowStatus: 'HELD'
+                        }
+                    });
+                }
             });
 
             return NextResponse.json({ success: true });

@@ -39,7 +39,7 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
     const navItems = [
         { href: '/search', label: 'Find Tutors', icon: 'search', roles: ['STUDENT'] as UserRole[] },
         { href: '/student/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['STUDENT'] as UserRole[] },
-        { href: '/student/wallet', label: 'Wallet', icon: 'account_balance_wallet', roles: ['STUDENT'] as UserRole[] },
+        { href: '/student/wallet', label: 'Payment History', icon: 'receipt_long', roles: ['STUDENT'] as UserRole[] },
         { href: '/student/bookings', label: 'My Bookings', icon: 'event', roles: ['STUDENT'] as UserRole[] },
         { href: '/student/classroom', label: 'My Classrooms', icon: 'school', roles: ['STUDENT'] as UserRole[] },
         { href: '/tutor/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['TUTOR'] as UserRole[] },

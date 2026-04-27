@@ -32,7 +32,7 @@ export default async function TutorDashboardPage() {
     }
 
     // Fetch tutor data
-    const [wallet, recentBookings, pendingBookings] = await Promise.all([
+    const [wallet, recentBookings, pendingBookings, pendingBookingsEscrow] = await Promise.all([
         prisma.wallet.findUnique({
             where: { userId: session.user.id },
             include: {
@@ -71,11 +71,19 @@ export default async function TutorDashboardPage() {
                 },
             },
         }),
+        prisma.booking.findMany({
+            where: {
+                tutorId: tutorProfile.id,
+                escrowStatus: 'HELD'
+            }
+        })
     ]);
 
     const totalEarnings = wallet?.transactions
-        .filter(t => t.type === 'PAYMENT')
+        .filter(t => t.type === 'DEPOSIT')
         .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+        
+    const escrowBalance = pendingBookingsEscrow.reduce((sum, b) => sum + Number(b.tutorEarning), 0);
 
     const availableBalance = wallet ? Number(wallet.balance) : 0;
 
@@ -163,6 +171,25 @@ export default async function TutorDashboardPage() {
                         >
                             Withdraw earnings →
                         </Link>
+                    </div>
+                    
+                    <div className="rounded-xl bg-white p-6 shadow-sm border border-slate-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-slate-600">In Escrow</p>
+                                <p className="mt-2 text-2xl font-bold text-slate-900">
+                                    {escrowBalance.toFixed(2)} ETB
+                                </p>
+                            </div>
+                            <div className="rounded-full bg-blue-100 p-3">
+                                <span className="material-symbols-outlined text-blue-600 text-2xl">
+                                    lock
+                                </span>
+                            </div>
+                        </div>
+                        <p className="mt-4 text-xs text-slate-500">
+                            Available after lesson completion
+                        </p>
                     </div>
 
                     <div className="rounded-xl bg-white p-6 shadow-sm border border-slate-200">
