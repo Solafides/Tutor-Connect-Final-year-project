@@ -54,6 +54,7 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
         : [];
 
     return (
+        <>
         <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-sm">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between">
@@ -91,13 +92,6 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                                 <span className="hidden sm:block text-sm text-slate-600">
                                     {userName && `Hello, ${userName}`}
                                 </span>
-                                <Link
-                                    href="/"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-lg">home</span>
-                                    <span className="hidden sm:inline">Back to Home</span>
-                                </Link>
                                 <button
                                     onClick={handleSignOut}
                                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
@@ -126,5 +120,17 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                 </div>
             </div>
         </nav>
+        {userRole && pathname !== `/${userRole.toLowerCase()}/dashboard` && (
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6">
+                <button 
+                    onClick={() => router.back()} 
+                    className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-primary transition-colors bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm w-fit"
+                >
+                    <span className="material-symbols-outlined text-lg">arrow_back</span>
+                    Back
+                </button>
+            </div>
+        )}
+        </>
     );
 }
