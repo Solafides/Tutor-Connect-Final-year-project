@@ -91,6 +91,13 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                                 <span className="hidden sm:block text-sm text-slate-600">
                                     {userName && `Hello, ${userName}`}
                                 </span>
+                                <Link
+                                    href="/"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-lg">home</span>
+                                    <span className="hidden sm:inline">Back to Home</span>
+                                </Link>
                                 <button
                                     onClick={handleSignOut}
                                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"

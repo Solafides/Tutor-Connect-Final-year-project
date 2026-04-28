@@ -3,6 +3,34 @@ import React from 'react';
 export default async function LandingPage() {
   return (
     <>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between p-4 sm:p-6 lg:px-8" aria-label="Global">
+          <div className="flex lg:flex-1">
+            <a href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
+              <span className="sr-only">Tutor Connect</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
+                <span className="material-symbols-outlined text-2xl">school</span>
+              </div>
+              <span className="text-xl font-black text-slate-900 tracking-tight">Tutor Connect</span>
+            </a>
+          </div>
+          <div className="hidden lg:flex lg:gap-x-10">
+            <a href="#" className="text-sm font-bold leading-6 text-slate-600 hover:text-primary transition-colors">How it works</a>
+            <a href="#" className="text-sm font-bold leading-6 text-slate-600 hover:text-primary transition-colors">Find a Tutor</a>
+            <a href="#" className="text-sm font-bold leading-6 text-slate-600 hover:text-primary transition-colors">Safety</a>
+            <a href="#" className="text-sm font-bold leading-6 text-slate-600 hover:text-primary transition-colors">Pricing</a>
+          </div>
+          <div className="flex flex-1 justify-end items-center gap-6">
+            <a href="/login" className="text-sm font-bold leading-6 text-slate-700 hover:text-primary transition-colors">
+              Log in
+            </a>
+            <a href="/register" className="hidden sm:inline-flex justify-center items-center rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition-all hover:-translate-y-0.5">
+              Get Started <span aria-hidden="true" className="ml-2">&rarr;</span>
+            </a>
+          </div>
+        </nav>
+      </header>
+
       <section className="relative overflow-hidden bg-background-light py-12 md:py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-y-12 lg:grid-cols-2 lg:gap-x-16 lg:items-center">

@@ -23,8 +23,11 @@ import {
     UserPlus,
     Briefcase,
     X,
-    Download
+    Download,
+    Trash2
 } from 'lucide-react';
+import FinancialCharts from './FinancialCharts';
+import DeleteUserForm from './DeleteUserForm';
 
 /**
  * Tutor-Connect Admin Dashboard
@@ -44,6 +47,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
     const activeTab = params?.tab || 'overview';
     const searchQuery = params?.q || '';
     const showCreateStaffModal = params?.modal === 'new-staff';
+    const showCreateUserModal = params?.modal === 'new-user';
 
     // 3. Fetch Dynamic Data from Database (Includes Profiles to get real names)
     const allUsers = await prisma.user.findMany({
@@ -95,7 +99,45 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
         redirect('/admin/dashboard?tab=staff');
     }
 
-    // 7. Server Action to Export CSV
+    // 7. Server Action to Delete User or Staff
+    async function handleDeleteUser(formData: FormData) {
+        "use server";
+        const id = formData.get('id') as string;
+        const tab = formData.get('tab') as string;
+        
+        await prisma.user.delete({
+            where: { id }
+        });
+
+        revalidatePath('/admin/dashboard');
+        redirect(`/admin/dashboard?tab=${tab}`);
+    }
+
+    // 8. Server Action to Create User (Student/Tutor)
+    async function handleCreateUser(formData: FormData) {
+        "use server";
+        const name = formData.get('name') as string;
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+        const role = formData.get('role') as any;
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await prisma.user.create({
+            data: {
+                email,
+                passwordHash: hashedPassword,
+                role,
+                ...(role === 'STUDENT' ? { studentProfile: { create: { fullName: name } } } : {}),
+                ...(role === 'TUTOR' ? { tutorProfile: { create: { fullName: name, hourlyRate: 0 } } } : {})
+            }
+        });
+
+        revalidatePath('/admin/dashboard');
+        redirect('/admin/dashboard?tab=users');
+    }
+
+    // 9. Server Action to Export CSV
     async function handleExportCSV() {
         "use server";
         const users = await prisma.user.findMany({
@@ -188,6 +230,19 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                             <Bell size={20} />
                             <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full"></span>
                         </button>
+                        <Link href="/" className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all text-sm font-bold">
+                            <span className="material-symbols-outlined text-[16px]">home</span>
+                            <span className="hidden md:inline">Back to Home</span>
+                        </Link>
+                        <form action={async () => {
+                            "use server";
+                            await signOut({ redirectTo: '/' });
+                        }}>
+                            <button type="submit" className="flex items-center gap-2 p-2.5 bg-red-50 border border-red-100 rounded-xl text-red-600 hover:bg-red-100 transition-all text-sm font-bold">
+                                <LogOut size={16} />
+                                <span className="hidden md:inline">Sign Out</span>
+                            </button>
+                        </form>
                     </div>
                 </header>
 
@@ -257,6 +312,9 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                                         <Download size={16} /> Export CSV
                                     </button>
                                 </form>
+                                <Link href="/admin/dashboard?tab=users&modal=new-user" className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm active:scale-95 ml-3">
+                                    <UserPlus size={16} /> Add User
+                                </Link>
                             </div>
 
                             {params?.exported === 'true' && (
@@ -289,9 +347,12 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                                                     {user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : 'N/A'}
                                                 </td>
                                                 <td className="p-4 pr-6 text-right">
-                                                    <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                                                        <MoreVertical size={18} />
-                                                    </button>
+                                                    <div className="flex justify-end gap-2">
+                                                        <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                                                            <MoreVertical size={18} />
+                                                        </button>
+                                                        <DeleteUserForm id={user.id} tab="users" action={handleDeleteUser} />
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -346,9 +407,12 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                                                         {staff.createdAt ? new Date(staff.createdAt).toISOString().split('T')[0] : 'N/A'}
                                                     </td>
                                                     <td className="p-4 pr-6 text-right">
-                                                        <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                                                            <Settings size={18} />
-                                                        </button>
+                                                        <div className="flex justify-end gap-2">
+                                                            <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                                                                <Settings size={18} />
+                                                            </button>
+                                                            <DeleteUserForm id={staff.id} tab="staff" action={handleDeleteUser} disabled={staff.email === session?.user?.email} />
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -356,6 +420,24 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                                     </table>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* TAB: FINANCIALS */}
+                    {activeTab === 'financials' && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900">Financial Statistics</h2>
+                                <p className="text-slate-500 font-medium text-sm mt-1">Overview of platform revenue and user distribution.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <StatCard icon={<DollarSign />} label="Total Revenue" value="45,200.00" trend="+12% from last month" isCurrency={true} />
+                                <StatCard icon={<CheckCircle />} label="Pending Escrows" value="12,500.00" trend="Currently held in trust" isCurrency={true} />
+                                <StatCard icon={<Activity />} label="Platform Fees Collected" value="3,200.00" trend="Total earnings" isCurrency={true} />
+                            </div>
+
+                            <FinancialCharts />
                         </div>
                     )}
 
@@ -395,6 +477,51 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                                 <div className="pt-4">
                                     <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-emerald-100 hover:bg-emerald-700 hover:shadow-md active:scale-[0.98]">
                                         Create Staff Account
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Create User Modal */}
+                {showCreateUserModal && (
+                    <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+                        <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
+                            <div className="flex justify-between items-center mb-8">
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Add New User</h2>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Student or Tutor</p>
+                                </div>
+                                <Link href="/admin/dashboard?tab=users" className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-full transition-colors">
+                                    <X size={20} />
+                                </Link>
+                            </div>
+
+                            <form action={handleCreateUser} className="space-y-5">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Full Name</label>
+                                    <input required name="name" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-800 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" placeholder="e.g. John Smith" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Email Address</label>
+                                    <input required type="email" name="email" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-800 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" placeholder="john@example.com" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Account Password</label>
+                                    <input required type="password" name="password" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-800 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" placeholder="Create a password" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">User Role</label>
+                                    <select required name="role" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-800 font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                                        <option value="STUDENT">Student</option>
+                                        <option value="TUTOR">Tutor</option>
+                                    </select>
+                                </div>
+
+                                <div className="pt-4">
+                                    <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-blue-100 hover:bg-blue-700 hover:shadow-md active:scale-[0.98]">
+                                        Create User Account
                                     </button>
                                 </div>
                             </form>
