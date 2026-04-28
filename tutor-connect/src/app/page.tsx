@@ -144,7 +144,7 @@ export default async function LandingPage() {
              )}
           </div>
           <div className="mt-12 text-center">
-            <a href="/search" className="inline-flex justify-center items-center rounded-xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-primary-dark transition-colors">
+            <a href="/register" className="inline-flex justify-center items-center rounded-xl bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-primary-dark transition-colors">
               View all tutors
             </a>
           </div>
