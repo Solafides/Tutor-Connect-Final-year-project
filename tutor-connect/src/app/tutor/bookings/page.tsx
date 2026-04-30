@@ -77,7 +77,7 @@ export default async function TutorBookingsPage() {
                                             Scheduled for: {new Date(booking.scheduledFor).toLocaleDateString()} at {new Date(booking.scheduledFor).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                         <p className="text-sm text-slate-500">
-                                            Duration: {booking.duration} mins • Mode: {booking.tutoringMode || 'Virtual'}
+                                            Duration: {booking.duration} mins • Mode: {tutorProfile.tutoringMode || 'Virtual'}
                                         </p>
                                     </div>
 

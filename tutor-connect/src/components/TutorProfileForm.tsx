@@ -155,7 +155,7 @@ export function TutorProfileForm({ profile, allSubjects, selectedSubjectIds }: T
                             required
                             name="tutoringMode"
                             value={tutoringMode}
-                            onChange={(e) => setTutoringMode(e.target.value)}
+                            onChange={(e) => setTutoringMode(e.target.value as "VIRTUAL" | "IN_PERSON" | "BOTH")}
                             className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         >
                             <option value="VIRTUAL">Virtual / Online</option>

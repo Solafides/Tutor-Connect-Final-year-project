@@ -11,8 +11,16 @@ export async function payForBooking(bookingId: string) {
         throw new Error('Unauthorized');
     }
 
+    const studentProfile = await prisma.studentProfile.findUnique({
+        where: { userId: session.user.id }
+    });
+
+    if (!studentProfile) {
+        throw new Error('Student profile not found');
+    }
+
     const booking = await prisma.booking.findUnique({
-        where: { id: bookingId, studentId: session.user.studentProfile?.id }
+        where: { id: bookingId, studentId: studentProfile.id }
     });
 
     if (!booking) {

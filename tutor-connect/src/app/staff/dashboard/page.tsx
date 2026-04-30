@@ -49,7 +49,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     const [tutors, bookings, allSubjects] = await Promise.all([
         prisma.tutorProfile.findMany({
             orderBy: { createdAt: 'desc' },
-            include: { user: true, subjects: { include: { subject: true } } },
+            include: { user: true, subjects: { include: { subject: true } }, verificationDocs: true },
             take: 200 // Prevent memory leaks
         }),
         prisma.booking.findMany({
@@ -138,15 +138,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
         const userId = formData.get('userId') as string;
         const message = formData.get('message') as string;
         
-        await prisma.notification.create({
-            data: {
-                userId,
-                title: 'Message from Staff',
-                message,
-                type: 'SYSTEM',
-                isRead: false
-            }
-        });
+        console.warn(`Notifications not implemented in schema. Attempted to send to ${userId}: ${message}`);
         revalidatePath('/staff/dashboard');
     }
 
@@ -176,7 +168,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
             
             if (!exists) {
                 await prisma.tutorSubject.create({
-                    data: { tutorId: tutorId, subjectId: subject.id, isActive: true }
+                    data: { tutorId: tutorId, subjectId: subject.id }
                 });
             }
         } catch (error) {
@@ -326,11 +318,11 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                     </Link>
                                 </div>
                                 <div className="p-6 space-y-4 bg-slate-50/30">
-                                    <DocumentRow title="National / University ID" url={tutorToViewFiles.idDocument || '#'} isMissing={!tutorToViewFiles.idDocument} />
-                                    <DocumentRow title="Academic Transcript" url={tutorToViewFiles.transcriptDocument || '#'} isMissing={!tutorToViewFiles.transcriptDocument} />
-                                    <DocumentRow title="Teaching Certificate" url={tutorToViewFiles.certificateDocument || '#'} isMissing={!tutorToViewFiles.certificateDocument} />
+                                    <DocumentRow title="National / University ID" url={tutorToViewFiles.verificationDocs?.find((d: any) => d.docType === 'ID')?.fileUrl || '#'} isMissing={!tutorToViewFiles.verificationDocs?.find((d: any) => d.docType === 'ID')?.fileUrl} />
+                                    <DocumentRow title="Academic Transcript" url={tutorToViewFiles.verificationDocs?.find((d: any) => d.docType === 'TRANSCRIPT')?.fileUrl || '#'} isMissing={!tutorToViewFiles.verificationDocs?.find((d: any) => d.docType === 'TRANSCRIPT')?.fileUrl} />
+                                    <DocumentRow title="Teaching Certificate" url={tutorToViewFiles.verificationDocs?.find((d: any) => d.docType === 'CERTIFICATE')?.fileUrl || '#'} isMissing={!tutorToViewFiles.verificationDocs?.find((d: any) => d.docType === 'CERTIFICATE')?.fileUrl} />
                                     
-                                    {(!tutorToViewFiles.idDocument && !tutorToViewFiles.transcriptDocument) && (
+                                    {(!tutorToViewFiles.verificationDocs?.find((d: any) => d.docType === 'ID')?.fileUrl && !tutorToViewFiles.verificationDocs?.find((d: any) => d.docType === 'TRANSCRIPT')?.fileUrl) && (
                                         <div className="mt-4 p-4 bg-orange-50 text-orange-700 rounded-xl text-sm border border-orange-200 flex items-start gap-3">
                                             <AlertCircle size={20} className="shrink-0 mt-0.5" />
                                             <p>This tutor has not uploaded any physical documents yet. You may need to request them via direct message.</p>

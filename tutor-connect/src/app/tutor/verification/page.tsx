@@ -57,7 +57,6 @@ export default async function TutorVerificationPage() {
                                 {status === 'APPROVED' && 'Your account is verified! You are visible to students.'}
                                 {status === 'PENDING' && 'If you haven\'t uploaded your documents yet, please do so below. Otherwise, they are under review.'}
                                 {status === 'REJECTED' && `Verification rejected: ${tutorProfile.rejectionReason || 'Invalid documents.'} Please resubmit.`}
-                                {status === 'UNVERIFIED' && 'Please upload your required documents below to get verified.'}
                             </p>
                         </div>
                     </div>

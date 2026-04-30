@@ -42,10 +42,7 @@ export async function getClassrooms() {
 
     const classrooms = await prisma.classroom.findMany({
         where: {
-            OR: [
-                { tutorId: tutor.id },
-                { booking: { tutorId: tutor.id } }
-            ]
+            booking: { tutorId: tutor.id }
         },
         include: { booking: true },
         orderBy: { createdAt: "desc" },
@@ -55,37 +52,5 @@ export async function getClassrooms() {
 }
 
 export async function createClassroom(formData: FormData) {
-    const session = await auth();
-    if (!session?.user || session.user.role !== "TUTOR") {
-        return { error: "Unauthorized" };
-    }
-
-    const title = formData.get("title") as string;
-    const subject = formData.get("subject") as string;
-
-    if (!title || !subject) {
-        return { error: "Title and Subject are required" };
-    }
-
-    const tutor = await prisma.tutorProfile.findUnique({
-        where: { userId: session.user.id },
-    });
-
-    if (!tutor) return { error: "Tutor profile not found" };
-
-    try {
-        await prisma.classroom.create({
-            data: {
-                tutorId: tutor.id,
-                title,
-                subject,
-            },
-        });
-
-        revalidatePath("/tutor/classroom");
-        return { success: true };
-    } catch (error) {
-        console.error("Failed to create classroom:", error);
-        return { error: "Failed to create classroom" };
-    }
+    return { error: "Not implemented. Classroom creation requires a booking ID." };
 }
