@@ -1,5 +1,6 @@
 import React from 'react';
 import { prisma } from '@/lib/db';
+import LandingHeader from '@/components/LandingHeader';
 
 export default async function LandingPage() {
     const featuredTutors = await prisma.tutorProfile.findMany({
@@ -15,86 +16,60 @@ export default async function LandingPage() {
     });
   return (
     <>
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between p-4 sm:p-6 lg:px-8" aria-label="Global">
-          <div className="flex lg:flex-1">
-            <a href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
-              <span className="sr-only">Tutor Connect</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
-                <span className="material-symbols-outlined text-2xl">school</span>
-              </div>
-              <span className="text-xl font-black text-slate-900 tracking-tight">Tutor Connect</span>
-            </a>
-          </div>
-          <div className="hidden lg:flex lg:gap-x-10">
-            <a href="#how-it-works" className="text-sm font-bold leading-6 text-slate-600 hover:text-primary transition-colors">How it works</a>
-            <a href="#find-tutor" className="text-sm font-bold leading-6 text-slate-600 hover:text-primary transition-colors">Find a Tutor</a>
-            <a href="#pricing" className="text-sm font-bold leading-6 text-slate-600 hover:text-primary transition-colors">Pricing</a>
-          </div>
-          <div className="flex flex-1 justify-end items-center gap-6">
-            <a href="/login" className="text-sm font-bold leading-6 text-slate-700 hover:text-primary transition-colors">
-              Log in
-            </a>
-            <a href="/register" className="hidden sm:inline-flex justify-center items-center rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition-all hover:-translate-y-0.5">
-              Get Started <span aria-hidden="true" className="ml-2">&rarr;</span>
-            </a>
-          </div>
-        </nav>
-      </header>
+      <LandingHeader />
 
-      <section className="relative overflow-hidden bg-background-light py-12 md:py-20 lg:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-cover bg-center py-12 md:py-20 lg:py-28" style={{ backgroundImage: 'url("/images/hero_bg.png")' }}>
+        <div className="absolute inset-0 bg-slate-900/40 lg:bg-gradient-to-r lg:from-slate-900/95 lg:via-slate-900/60 lg:to-slate-900/10"></div>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-y-12 lg:grid-cols-2 lg:gap-x-16 lg:items-center">
             <div className="max-w-2xl lg:max-w-none flex flex-col items-start text-left">
-              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-primary ring-1 ring-inset ring-blue-700/10 mb-6">
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-sm font-semibold text-blue-200 ring-1 ring-inset ring-blue-500/30 mb-6 backdrop-blur-sm">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-400"></span>
                 </span>
                 Start learning today
               </div>
-              <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl mb-6 leading-[1.15]">
+              <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl mb-6 leading-[1.15]">
                 Find the perfect <br className="hidden lg:block" />
-                <span className="text-primary relative inline-block">
+                <span className="text-green-500 relative inline-block">
                   tutor for you.
-                  <svg className="absolute w-full h-2 -bottom-0 left-0 text-blue-200 -z-10 opacity-60" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" fill="none" stroke="currentColor" strokeWidth="8"></path></svg>
+                  {/* <svg className="absolute w-full h-2 -bottom-0 left-0 text-blue-400/30 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" fill="none" stroke="currentColor" strokeWidth="8"></path></svg> */}
                 </span>
               </h1>
-              <p className="text-lg leading-relaxed text-slate-600 mb-8 max-w-lg">
+              <p className="text-lg leading-relaxed text-slate-300 mb-8 max-w-lg">
                 Connect with expert tutors for 1-on-1 lessons tailored to your specific needs. Whether you need help with math, science, or learning a new language.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mb-10 w-full sm:w-auto">
                 <a href="#find-tutor" className="inline-flex justify-center items-center rounded-xl bg-primary px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/25 hover:bg-primary-dark transition-all hover:-translate-y-0.5 w-full sm:w-auto">
                   Find a Tutor
                 </a>
-                <a href="/register" className="inline-flex justify-center items-center rounded-xl bg-white px-8 py-3.5 text-base font-bold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:text-primary transition-all hover:-translate-y-0.5 w-full sm:w-auto">
+                <a href="/register" className="inline-flex justify-center items-center rounded-xl bg-white/10 backdrop-blur-md px-8 py-3.5 text-base font-bold text-white shadow-sm ring-1 ring-inset ring-white/20 hover:bg-white/20 transition-all hover:-translate-y-0.5 w-full sm:w-auto">
                   Become a Tutor
                 </a>
               </div>
-              <div className="flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-slate-200 pt-8 w-full">
+              <div className="flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-slate-600/50 pt-8 w-full">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-green-500 fill-1">check_circle</span>
-                  <span className="text-sm font-semibold text-slate-600">Verified Tutors</span>
+                  <span className="material-symbols-outlined text-green-400 fill-1">check_circle</span>
+                  <span className="text-sm font-semibold text-slate-300">Verified Tutors</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-green-500 fill-1">check_circle</span>
-                  <span className="text-sm font-semibold text-slate-600">Secure Payment</span>
+                  <span className="material-symbols-outlined text-green-400 fill-1">check_circle</span>
+                  <span className="text-sm font-semibold text-slate-300">Secure Payment</span>
                 </div>
               </div>
             </div>
-            <div className="relative lg:h-full flex justify-center lg:justify-end">
-              <div className="relative w-full max-w-[550px] aspect-[4/3] lg:aspect-auto lg:h-[600px] rounded-2xl bg-slate-100 shadow-2xl overflow-hidden group">
-                <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80")' }}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
-                <div className="absolute bottom-6 left-6 md:left-8 bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-xl border border-slate-100 flex items-center gap-4 animate-bounce" style={{ animationDuration: '3s' }}>
+            <div className="relative lg:h-full flex justify-center lg:justify-end items-end pb-4 lg:pb-12">
+              <div className="relative w-full max-w-[550px] h-40 sm:h-64 lg:h-[600px] flex items-end justify-start lg:justify-end">
+                <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl shadow-xl border border-white/20 flex items-center gap-4 animate-bounce" style={{ animationDuration: '3s' }}>
                   <div className="flex -space-x-3">
-                    <img className="h-10 w-10 rounded-full border-2 border-white object-cover" src="https://i.pravatar.cc/150?u=1" alt="tutor1" />
-                    <img className="h-10 w-10 rounded-full border-2 border-white object-cover" src="https://i.pravatar.cc/150?u=2" alt="tutor2" />
-                    <img className="h-10 w-10 rounded-full border-2 border-white object-cover" src="https://i.pravatar.cc/150?u=3" alt="tutor3" />
+                    <img className="h-10 w-10 rounded-full border-2 border-slate-800 object-cover" src="https://i.pravatar.cc/150?u=1" alt="tutor1" />
+                    <img className="h-10 w-10 rounded-full border-2 border-slate-800 object-cover" src="https://i.pravatar.cc/150?u=2" alt="tutor2" />
+                    <img className="h-10 w-10 rounded-full border-2 border-slate-800 object-cover" src="https://i.pravatar.cc/150?u=3" alt="tutor3" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900">5k+ Tutors</p>
-                    <p className="text-xs text-slate-500">Available now</p>
+                    <p className="text-sm font-bold text-white">5k+ Tutors</p>
+                    <p className="text-xs text-slate-300">Available now</p>
                   </div>
                 </div>
               </div>
