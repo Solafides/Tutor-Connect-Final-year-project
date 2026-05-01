@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserRole } from '@prisma/client';
+import { useState } from 'react';
 
 interface NavigationProps {
     userRole?: UserRole;
@@ -13,6 +14,7 @@ interface NavigationProps {
 export function Navigation({ userRole, userName, isLandingPageNav = false }: NavigationProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     // FIXED: Now we also check if the user is on the /login or /register page
     // This completely removes the "Tutor Connect" top header on these pages so your sidebar fits perfectly
@@ -94,14 +96,14 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                                 </span>
                                 <button
                                     onClick={handleSignOut}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                    className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                                 >
                                     <span className="material-symbols-outlined">logout</span>
-                                    <span className="hidden sm:inline">Sign Out</span>
+                                    <span>Sign Out</span>
                                 </button>
                             </>
                         ) : (
-                            <>
+                            <div className="hidden md:flex items-center gap-4">
                                 <Link
                                     href="/login"
                                     className="text-sm font-medium text-slate-700 hover:text-slate-900"
@@ -114,12 +116,95 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                                 >
                                     Sign Up
                                 </Link>
-                            </>
+                            </div>
                         )}
+                        {/* Mobile menu button */}
+                        <div className="flex md:hidden">
+                            <button
+                                type="button"
+                                className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-slate-700"
+                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            >
+                                <span className="sr-only">Open main menu</span>
+                                <span className="material-symbols-outlined text-3xl">{isMenuOpen ? 'close' : 'menu'}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </nav>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+            <div className="md:hidden" role="dialog" aria-modal="true">
+                <div className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
+                <div className="fixed inset-y-0 right-0 z-50 w-[70%] sm:max-w-sm overflow-y-auto bg-white px-6 py-6 sm:ring-1 sm:ring-slate-900/10 shadow-2xl">
+                    <div className="flex items-center justify-between">
+                        <Link href={userRole ? `/${userRole.toLowerCase()}/dashboard` : "/"} className="-m-1.5 p-1.5 flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
+                            <span className="sr-only">Tutor Connect</span>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
+                                <span className="material-symbols-outlined text-xl">school</span>
+                            </div>
+                            <span className="text-xl font-bold text-slate-900 tracking-tight">Tutor Connect</span>
+                        </Link>
+                        <button
+                            type="button"
+                            className="-m-2.5 rounded-md p-2.5 text-slate-700"
+                            onClick={() => setIsMenuOpen(false)}
+                        >
+                            <span className="sr-only">Close menu</span>
+                            <span className="material-symbols-outlined text-3xl">close</span>
+                        </button>
+                    </div>
+                    <div className="mt-6 flow-root">
+                        <div className="-my-6 divide-y divide-slate-500/10">
+                            <div className="space-y-2 py-6">
+                                {filteredNavItems.map((item) => {
+                                    const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            onClick={() => setIsMenuOpen(false)}
+                                            className={`flex items-center gap-3 -mx-3 rounded-lg px-3 py-3 text-base font-bold leading-7 transition-colors ${
+                                                isActive ? 'bg-emerald-50 text-emerald-700' : 'text-slate-900 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                                            {item.label}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                            <div className="py-6 flex flex-col gap-4">
+                                {userRole ? (
+                                    <button
+                                        onClick={() => {
+                                            setIsMenuOpen(false);
+                                            handleSignOut();
+                                        }}
+                                        className="-mx-3 flex items-center gap-3 w-full rounded-lg px-3 py-3 text-base font-bold text-slate-900 hover:bg-slate-50"
+                                    >
+                                        <span className="material-symbols-outlined text-xl">logout</span>
+                                        Sign Out
+                                    </button>
+                                ) : (
+                                    <>
+                                        <Link href="/login" onClick={() => setIsMenuOpen(false)} className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-bold leading-7 text-slate-900 hover:bg-slate-50">
+                                            Sign In
+                                        </Link>
+                                        <Link href="/register" onClick={() => setIsMenuOpen(false)} className="-mx-3 flex w-full justify-center rounded-xl bg-emerald-600 px-3 py-3 text-base font-bold text-white hover:bg-emerald-700 shadow-md">
+                                            Sign Up
+                                        </Link>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {userRole && pathname !== `/${userRole.toLowerCase()}/dashboard` && (
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6">
                 <button 
