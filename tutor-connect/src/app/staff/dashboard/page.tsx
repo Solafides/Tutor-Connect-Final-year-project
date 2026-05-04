@@ -554,7 +554,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                     <td className="p-6 pl-8">
                                                         <div className="font-black text-slate-900">{booking.subjectName}</div>
                                                         <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mt-0.5">
-                                                            {booking.totalAmount} ETB Transaction
+                                                            {booking.totalAmount.toString()} ETB Transaction
                                                         </div>
                                                     </td>
                                                     <td className="p-6">

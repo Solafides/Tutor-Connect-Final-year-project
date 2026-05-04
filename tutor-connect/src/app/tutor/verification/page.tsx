@@ -6,13 +6,18 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { CheckCircle, Clock, FileUp, ShieldAlert, AlertTriangle } from 'lucide-react';
 
-export default async function TutorVerificationPage() {
+export default async function TutorVerificationPage({ searchParams }: { searchParams: any }) {
     const session = await auth();
 
     // 1. Authorization Check (Fixed syntax: added ||)
     if (!session?.user || session.user.role !== 'TUTOR') {
         redirect('/login');
     }
+
+    // Parse search params for feedback
+    const params = await searchParams;
+    const success = params?.success;
+    const error = params?.error;
 
     // 2. Fetch Data with Error Handling to prevent server hang
     let tutorProfile;
@@ -45,9 +50,18 @@ export default async function TutorVerificationPage() {
     async function handleUpload(formData: FormData) {
         "use server";
         try {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-            // Fixed syntax: added || between keys
-            const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+            const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+            if (!supabaseUrl || !supabaseKey) {
+                console.error('Supabase env values', {
+                    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+                    SUPABASE_URL: process.env.SUPABASE_URL,
+                    SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+                    NEXT_PUBLIC_SUPABASE_ANON_KEY: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+                    SUPABASE_ANON_KEY: Boolean(process.env.SUPABASE_ANON_KEY)
+                });
+                throw new Error("Supabase configuration missing. Please check environment variables.");
+            }
             const supabase = createClient(supabaseUrl, supabaseKey);
 
             const idFile = formData.get('idDocument') as File;
@@ -58,6 +72,7 @@ export default async function TutorVerificationPage() {
             async function upload(file: File, folder: string) {
                 // Fixed syntax: added ||
                 if (!file || file.size === 0) return null;
+                if (file.size > 5 * 1024 * 1024) throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`);
                 const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
                 const fileName = `${session!.user.id}_${Date.now()}_${safeName}`;
                 
@@ -65,16 +80,17 @@ export default async function TutorVerificationPage() {
                     .from('tutor-documents')
                     .upload(`${folder}/${fileName}`, file);
 
-                if (error) throw new Error("Supabase Upload Error");
+                if (error) throw new Error(`Supabase upload failed: ${error.message}`);
 
                 const { data } = supabase.storage.from('tutor-documents').getPublicUrl(`${folder}/${fileName}`);
                 return data.publicUrl;
             }
 
             const docsToCreate = [];
-            const idUrl = await upload(idFile, 'ids');
-            const transUrl = await upload(transcriptFile, 'transcripts');
-            const cvUrl = await upload(cvFile, 'cvs');
+            let idUrl, transUrl, cvUrl;
+            try { idUrl = await upload(idFile, 'ids'); } catch (e) { console.error("ID upload failed:", e); }
+            try { transUrl = await upload(transcriptFile, 'transcripts'); } catch (e) { console.error("Transcript upload failed:", e); }
+            try { cvUrl = await upload(cvFile, 'cvs'); } catch (e) { console.error("CV upload failed:", e); }
 
             if (idUrl) docsToCreate.push({ docType: 'id_card', fileUrl: idUrl, fileName: idFile.name });
             if (transUrl) docsToCreate.push({ docType: 'transcript', fileUrl: transUrl, fileName: transcriptFile.name });
@@ -82,29 +98,40 @@ export default async function TutorVerificationPage() {
 
             for (const f of optionalFiles) {
                 if (f instanceof File && f.size > 0) {
-                    const url = await upload(f, 'extra');
-                    if (url) docsToCreate.push({ docType: 'other_cert', fileUrl: url, fileName: f.name });
+                    try {
+                        const url = await upload(f, 'extra');
+                        if (url) docsToCreate.push({ docType: 'other_cert', fileUrl: url, fileName: f.name });
+                    } catch (e) {
+                        console.error("Optional file upload failed:", e);
+                    }
                 }
             }
 
             // Save only if the 3 mandatory files are ready
             if (docsToCreate.length >= 3) {
-                await prisma.tutorProfile.update({
-                    where: { userId: session!.user.id },
-                    data: {
-                        verificationStatus: 'PENDING',
-                        verificationDocs: {
-                            deleteMany: {}, 
-                            create: docsToCreate
+                try {
+                    await prisma.tutorProfile.update({
+                        where: { userId: session!.user.id },
+                        data: {
+                            verificationStatus: 'PENDING',
+                            verificationDocs: {
+                                deleteMany: {}, 
+                                create: docsToCreate
+                            }
                         }
-                    }
-                });
+                    });
+                    redirect('/tutor/verification?success=1');
+                } catch (dbError) {
+                    console.error("Database update failed:", dbError);
+                    redirect('/tutor/verification?error=db');
+                }
+            } else {
+                redirect('/tutor/verification?error=upload');
             }
         } catch (e) {
             console.error("Upload process failed:", e);
+            redirect('/tutor/verification?error=1');
         }
-
-        revalidatePath('/tutor/verification');
     }
 
     return (
@@ -114,6 +141,26 @@ export default async function TutorVerificationPage() {
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight">Verification Center</h1>
                     <p className="mt-2 text-slate-500 font-medium">Verified tutors gain priority in search results and student trust.</p>
                 </div>
+
+                {/* Feedback Messages */}
+                {success && (
+                    <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-3xl text-emerald-800 font-bold animate-in fade-in slide-in-from-top-2 duration-500">
+                        <CheckCircle size={24} className="inline mr-2" />
+                        Documents uploaded successfully! Your verification is now pending review by our staff.
+                    </div>
+                )}
+                {error === 'upload' && (
+                    <div className="p-6 bg-red-50 border border-red-200 rounded-3xl text-red-800 font-bold animate-in fade-in slide-in-from-top-2 duration-500">
+                        <AlertTriangle size={24} className="inline mr-2" />
+                        Upload failed. Please check your files and try again. Ensure files are under 5MB and in allowed formats.
+                    </div>
+                )}
+                {error === 'db' && (
+                    <div className="p-6 bg-red-50 border border-red-200 rounded-3xl text-red-800 font-bold animate-in fade-in slide-in-from-top-2 duration-500">
+                        <AlertTriangle size={24} className="inline mr-2" />
+                        Database error occurred. Your files were uploaded but couldn't be saved. Please contact support or try again later.
+                    </div>
+                )}
 
                 {/* --- Status Card --- */}
                 <div className={`p-8 rounded-3xl border-2 flex gap-6 items-start transition-all duration-500 ${
