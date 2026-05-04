@@ -28,7 +28,8 @@ import {
     ArrowUpRight,
     Clock,
     UserPlus,
-    Flag
+    Flag,
+    Calendar
 } from 'lucide-react';
 
 import { auth, signOut } from '@/auth';
@@ -154,8 +155,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
             await prisma.tutorSubject.create({
                 data: {
                     tutorId: tutorId,
-                    subjectId: finalSubjectId,
-                    isActive: true
+                    subjectId: finalSubjectId
                 }
             });
         } catch (e) {
@@ -228,7 +228,9 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                     <SidebarItem icon={<Users size={20} />} label="Manage Tutors" tabName="tutors" active={activeTab === 'tutors'} />
                     <SidebarItem icon={<CalendarCheck size={20} />} label="All Bookings" tabName="bookings" active={activeTab === 'bookings'} />
                     <SidebarItem icon={<AlertCircle size={20} />} label="Support Tickets" tabName="support" active={activeTab === 'support'} />
-                    <SidebarItem icon={<Settings size={20} />} label="System Settings" tabName="settings" active={activeTab === 'settings'} />
+                    {session.user.role === 'ADMIN' && (
+                        <SidebarItem icon={<Settings size={20} />} label="System Settings" tabName="settings" active={activeTab === 'settings'} />
+                    )}
                 </nav>
 
                 <div className="p-4 border-t border-slate-100 mt-auto">
