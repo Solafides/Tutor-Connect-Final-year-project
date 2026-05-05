@@ -117,6 +117,60 @@ export default function ClassroomClient() {
         }
     }, [myClasses, chapters, assignments, isInitialized]);
 
+    // ==============================
+    // SAVE TO DATABASE (NEW)
+    // ==============================
+    const saveClassroomToDB = async (classData: any) => {
+        try {
+            // Flatten chapters and their materials into resources
+            const chapterResources = chapters
+                .filter(ch => ch.classId === classData.id)
+                .flatMap(chapter =>
+                    chapter.materials.map(material => ({
+                        id: `${chapter.id}_${material.id}`,
+                        title: `${chapter.title} - ${material.title}`,
+                        content: material.type,
+                        fileUrl: material.url || null,
+                        fileName: material.fileName || null,
+                    }))
+                );
+
+            // Flatten assignments into resources
+            const assignmentResources = assignments
+                .filter(a => a.classId === classData.id)
+                .map(assignment => ({
+                    id: assignment.id.toString(),
+                    title: assignment.title,
+                    content: assignment.dueDate,
+                    fileUrl: null,
+                    fileName: assignment.fileName || null,
+                }));
+
+            const response = await fetch('/api/tutor/classrooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    classId: classData.id,
+                    title: classData.title,
+                    subject: classData.subject,
+                    chapters: chapterResources,
+                    assignments: assignmentResources,
+                }),
+            });
+            if (!response.ok) {
+                console.error('Failed to save classroom to DB');
+            }
+        } catch (error) {
+            console.error('Error saving classroom:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (isInitialized && myClasses.length > 0) {
+            myClasses.forEach(saveClassroomToDB);
+        }
+    }, [myClasses, chapters, assignments, isInitialized]);
+
     if (!isInitialized) return null;
 
     const currentChapters = chapters.filter(ch => ch.classId === selectedClass?.id);

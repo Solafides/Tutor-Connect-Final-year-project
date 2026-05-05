@@ -79,6 +79,7 @@ model TutorProfile {
   updatedAt          DateTime               @updatedAt @map("updated_at")
   availability       Availability[]
   bookings           Booking[]
+  classrooms         Classroom[]
   classroomResources ClassroomResource[]
   reviews            Review[]
   user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -208,12 +209,16 @@ model Booking {
 
 model Classroom {
   id          String              @id @default(cuid())
-  bookingId   String              @unique @map("booking_id")
+  bookingId   String?             @unique @map("booking_id")
+  tutorId     String?             @map("tutor_id")
+  title       String?
+  subject     String?
   meetingLink String?             @map("meeting_link")
   meetingId   String?             @map("meeting_id")
   createdAt   DateTime            @default(now()) @map("created_at")
   resources   ClassroomResource[]
-  booking     Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking     Booking?            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tutor       TutorProfile?       @relation(fields: [tutorId], references: [id], onDelete: Cascade)
 
   @@map("classrooms")
 }
@@ -226,6 +231,7 @@ model ClassroomResource {
   description  String?
   resourceType String       @map("resource_type")
   fileUrl      String?      @map("file_url")
+  fileName     String?      @map("file_name")
   content      String?
   uploadedAt   DateTime     @default(now()) @map("uploaded_at")
   classroom    Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
