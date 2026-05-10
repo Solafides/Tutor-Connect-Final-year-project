@@ -17,7 +17,12 @@ export default async function TutorBookingDetailsPage(props: { params: Promise<{
         where: { userId: session.user.id },
     });
 
-    if (!tutorProfile) redirect('/tutor/profile');
+    if (!tutorProfile) {
+        redirect('/tutor/profile');
+        return <div />;
+    }
+
+    const tutorId = tutorProfile.id;
 
     const booking = await prisma.booking.findUnique({
         where: {
@@ -56,8 +61,8 @@ export default async function TutorBookingDetailsPage(props: { params: Promise<{
 
         await prisma.classroom.upsert({
             where: { bookingId },
-            create: { bookingId, meetingLink },
-            update: { meetingLink },
+            create: { bookingId, tutorId, meetingLink },
+            update: { meetingLink, tutorId },
         });
 
         revalidatePath(`/tutor/bookings/${bookingId}`);

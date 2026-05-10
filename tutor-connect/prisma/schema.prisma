@@ -41,19 +41,20 @@ model Session {
 }
 
 model StudentProfile {
-  id           String    @id @default(cuid())
-  userId       String    @unique @map("user_id")
-  fullName     String    @map("full_name")
+  id           String                @id @default(cuid())
+  userId       String                @unique @map("user_id")
+  fullName     String                @map("full_name")
   phone        String?
-  gradeLevel   String?   @map("grade_level")
-  locationCity String?   @map("location_city")
-  locationArea String?   @map("location_area")
+  gradeLevel   String?               @map("grade_level")
+  locationCity String?               @map("location_city")
+  locationArea String?               @map("location_area")
   avatar       String?
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
   bookings     Booking[]
   reviews      Review[]
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments  StudentEnrollment[]
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_profiles")
 }
@@ -217,10 +218,25 @@ model Classroom {
   meetingId   String?             @map("meeting_id")
   createdAt   DateTime            @default(now()) @map("created_at")
   resources   ClassroomResource[]
+  enrollments StudentEnrollment[]
   booking     Booking?            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   tutor       TutorProfile?       @relation(fields: [tutorId], references: [id], onDelete: Cascade)
 
   @@map("classrooms")
+}
+
+model StudentEnrollment {
+  id          String         @id @default(cuid())
+  classroomId String         @map("classroom_id")
+  studentId   String         @map("student_id")
+  enrolledAt  DateTime       @default(now()) @map("enrolled_at")
+  classroom   Classroom      @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId])
+  @@index([classroomId])
+  @@index([studentId])
+  @@map("student_enrollments")
 }
 
 model ClassroomResource {

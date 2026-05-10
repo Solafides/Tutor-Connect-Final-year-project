@@ -54,7 +54,8 @@ export default function StudentClassroomPage() {
     const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
-    const [localEnrollments, setLocalEnrollments] = useState<Classroom[]>([]);
+    const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
+    const [enrollError, setEnrollError] = useState<string | null>(null);
 
     const searchParams = useSearchParams();
     const meetingLinkParam = searchParams?.get('meetingLink');
@@ -69,28 +70,12 @@ export default function StudentClassroomPage() {
     const [selectedClass, setSelectedClass] = useState<Classroom | null>(null);
 
     useEffect(() => {
-        const saved = localStorage.getItem('student_classroom_enrollments');
-        if (saved) {
-            try {
-                setLocalEnrollments(JSON.parse(saved));
-            } catch {
-                localStorage.removeItem('student_classroom_enrollments');
-            }
-        }
-    }, []);
-
-    useEffect(() => {
         async function loadClasses() {
             setIsLoading(true);
             setFetchError(null);
 
             try {
-                const saved = localStorage.getItem('student_classroom_enrollments');
-                const localEnrollments = saved ? JSON.parse(saved) : [];
-                const classIds = localEnrollments.map((enrollment: Classroom) => enrollment.id);
-
-                const url = classIds.length > 0 ? `/api/student/classrooms?classIds=${classIds.join(',')}` : '/api/student/classrooms';
-                const response = await fetch(url, {
+                const response = await fetch('/api/student/classrooms', {
                     method: 'GET',
                     credentials: 'same-origin',
                     cache: 'no-store',
@@ -100,14 +85,10 @@ export default function StudentClassroomPage() {
                 }
                 const result = await response.json();
                 const classes = result.classes || [];
-                const merged = [
-                    ...classes,
-                    ...localEnrollments.filter((local: Classroom) => !classes.some((cls: Classroom) => cls.id === local.id)),
-                ];
-                setEnrolledClasses(merged);
+                setEnrolledClasses(classes);
 
                 if (meetingLinkParam) {
-                    const directClass = merged.find((cls: Classroom) => cls.meetingLink === meetingLinkParam);
+                    const directClass = classes.find((cls: Classroom) => cls.meetingLink === meetingLinkParam);
                     if (directClass) {
                         setSelectedClass(directClass);
                         setView('CLASSROOM');
@@ -116,9 +97,7 @@ export default function StudentClassroomPage() {
                 }
             } catch (error: any) {
                 setFetchError(error?.message || 'Unable to load your classes.');
-                const saved = localStorage.getItem('student_classroom_enrollments');
-                const localEnrollments = saved ? JSON.parse(saved) : [];
-                setEnrolledClasses(localEnrollments);
+                setEnrolledClasses([]);
             } finally {
                 setIsLoading(false);
             }
@@ -132,27 +111,48 @@ export default function StudentClassroomPage() {
         setView('CLASSROOM');
     };
 
-    const handleJoinClass = (e: FormEvent<HTMLFormElement>) => {
+    const handleJoinClass = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        const classId = (formData.get('classId') as string).toUpperCase();
+        setIsEnrolling(true);
+        setEnrollError(null);
 
-        const newEnrollment: Classroom = {
-            id: classId,
-            bookingId: classId,
-            title: `Classroom ${classId}`,
-            subject: "Self-enrolled Classroom",
-            tutorName: "Verified Tutor",
-            lastActive: "Just now",
-            progress: 0,
-            resources: [],
-        };
+        try {
+            const formData = new FormData(e.currentTarget);
+            const classroomId = (formData.get('classId') as string).trim();
 
-        const updatedLocal = [newEnrollment, ...localEnrollments];
-        setLocalEnrollments(updatedLocal);
-        localStorage.setItem('student_classroom_enrollments', JSON.stringify(updatedLocal));
-        setEnrolledClasses([newEnrollment, ...enrolledClasses]);
-        setShowJoinModal(false);
+            if (!classroomId) {
+                setEnrollError('Please enter a classroom ID');
+                setIsEnrolling(false);
+                return;
+            }
+
+            const response = await fetch('/api/student/classrooms/enroll', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ classroomId }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                setEnrollError(result.error || 'Failed to enroll in classroom');
+                setIsEnrolling(false);
+                return;
+            }
+
+            // Add the new classroom to the list
+            setEnrolledClasses([result.classroom, ...enrolledClasses]);
+            setShowJoinModal(false);
+            setEnrollError(null);
+            (e.target as HTMLFormElement).reset();
+        } catch (error: any) {
+            setEnrollError(error?.message || 'An error occurred while enrolling');
+        } finally {
+            setIsEnrolling(false);
+        }
     };
 
     const lessonResources = selectedClass?.resources.filter((resource) => {
@@ -415,16 +415,21 @@ export default function StudentClassroomPage() {
                         <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-10 animate-in zoom-in-95 duration-200">
                             <div className="flex justify-between items-center mb-8">
                                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Join Classroom</h2>
-                                <button onClick={() => setShowJoinModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
+                                <button onClick={() => { setShowJoinModal(false); setEnrollError(null); }} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
                             </div>
+                            {enrollError && (
+                                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 text-sm text-red-700 font-semibold">
+                                    {enrollError}
+                                </div>
+                            )}
                             <form onSubmit={handleJoinClass} className="space-y-6">
                                 <div>
                                     <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Class ID / Invite Code</label>
-                                    <input required name="classId" className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4.5 text-slate-800 font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-emerald-500 transition-all uppercase tracking-widest" placeholder="E.G. CLS_123" />
+                                    <input required name="classId" disabled={isEnrolling} className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4.5 text-slate-800 font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-emerald-500 transition-all uppercase tracking-widest disabled:opacity-50" placeholder="E.G. CLS_123" />
                                     <p className="text-[10px] text-slate-400 mt-3 ml-1">Enter the unique code provided by your tutor.</p>
                                 </div>
-                                <button type="submit" className={`w-full ${brandGreen} text-white py-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-100 active:scale-95 mt-4`}>
-                                    Join Now
+                                <button type="submit" disabled={isEnrolling} className={`w-full ${brandGreen} text-white py-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-100 active:scale-95 mt-4 disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                    {isEnrolling ? 'Enrolling...' : 'Join Now'}
                                 </button>
                             </form>
                         </div>

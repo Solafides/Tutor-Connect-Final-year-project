@@ -16,9 +16,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
     }
 
-    const url = new URL(request.url);
-    const classIds = url.searchParams.get('classIds')?.split(',') || [];
-
     // Fetch booking-based classrooms
     const bookings = await prisma.booking.findMany({
         where: {
@@ -61,48 +58,48 @@ export async function GET(request: NextRequest) {
         })),
     }));
 
-    // Fetch tutor-created classrooms by IDs
-    const tutorClasses = [];
-    if (classIds.length > 0) {
-        const classrooms = await prisma.classroom.findMany({
-            where: {
-                id: { in: classIds },
-                tutorId: { not: null }, // Only tutor-created classrooms
-            },
-            include: {
-                resources: true,
-                tutor: {
-                    include: {
-                        user: true,
+    // Fetch tutor-created classrooms where student is enrolled
+    const enrollments = await prisma.studentEnrollment.findMany({
+        where: { studentId: studentProfile.id },
+        include: {
+            classroom: {
+                include: {
+                    resources: true,
+                    tutor: {
+                        include: {
+                            user: true,
+                        },
                     },
                 },
             },
-        });
+        },
+        orderBy: { enrolledAt: 'desc' },
+    });
 
-        for (const classroom of classrooms) {
-            tutorClasses.push({
-                id: classroom.id,
-                bookingId: null,
-                title: classroom.title || `Classroom ${classroom.id.slice(0, 6)}`,
-                subject: classroom.subject || 'Tutoring Session',
-                tutorName: classroom.tutor?.fullName || classroom.tutor?.user?.email || 'Verified Tutor',
-                lastActive: classroom.createdAt.toLocaleString(),
-                progress: 0,
-                meetingLink: classroom.meetingLink || null,
-                resources: classroom.resources.map((resource) => ({
-                    id: resource.id,
-                    title: resource.title,
-                    description: resource.description,
-                    resourceType: resource.resourceType,
-                    fileUrl: resource.fileUrl,
-                    content: resource.content,
-                    uploadedAt: resource.uploadedAt.toISOString(),
-                })),
-            });
-        }
-    }
+    const enrolledClasses = enrollments.map((enrollment) => {
+        const classroom = enrollment.classroom;
+        return {
+            id: classroom.id,
+            bookingId: null,
+            title: classroom.title || `Classroom ${classroom.id.slice(0, 6)}`,
+            subject: classroom.subject || 'Tutoring Session',
+            tutorName: classroom.tutor?.fullName || classroom.tutor?.user?.email || 'Verified Tutor',
+            lastActive: classroom.createdAt.toLocaleString(),
+            progress: 0,
+            meetingLink: classroom.meetingLink || null,
+            resources: classroom.resources.map((resource) => ({
+                id: resource.id,
+                title: resource.title,
+                description: resource.description,
+                resourceType: resource.resourceType,
+                fileUrl: resource.fileUrl,
+                content: resource.content,
+                uploadedAt: resource.uploadedAt.toISOString(),
+            })),
+        };
+    });
 
-    const classes = [...bookingClasses, ...tutorClasses];
+    const classes = [...bookingClasses, ...enrolledClasses];
 
     return NextResponse.json({ classes });
 }

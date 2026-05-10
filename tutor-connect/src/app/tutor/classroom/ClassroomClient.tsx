@@ -61,6 +61,8 @@ export default function ClassroomClient() {
     const [view, setView] = useState<ViewMode>('MANAGEMENT');
     const [activeTab, setActiveTab] = useState<TabMode>('lessons');
     const [isMeetingActive, setIsMeetingActive] = useState<boolean>(false);
+    const [enrolledStudents, setEnrolledStudents] = useState<any[]>([]);
+    const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
 
     // Modals state
     const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -92,6 +94,7 @@ export default function ClassroomClient() {
     const [selectedClass, setSelectedClass] = useState<any | null>(null);
     const [chapters, setChapters] = useState<Chapter[]>([]);
     const [assignments, setAssignments] = useState<Assignment[]>([]);
+    const [isLoadingClasses, setIsLoadingClasses] = useState<boolean>(false);
 
     // ==============================
     // DATA PERSISTENCE (SAVE & LOAD)
@@ -100,7 +103,6 @@ export default function ClassroomClient() {
         const savedData = localStorage.getItem('tutor_classroom_data');
         if (savedData) {
             const parsed = JSON.parse(savedData);
-            setMyClasses(parsed.classes || []);
             setChapters(parsed.chapters || []);
             setAssignments(parsed.assignments || []);
         }
@@ -116,6 +118,39 @@ export default function ClassroomClient() {
             }));
         }
     }, [myClasses, chapters, assignments, isInitialized]);
+
+    useEffect(() => {
+        async function loadTutorClasses() {
+            setIsLoadingClasses(true);
+
+            try {
+                const response = await fetch('/api/tutor/classrooms', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to load tutor classrooms');
+                }
+                const result = await response.json();
+                const dbClasses = result.classes || [];
+                setMyClasses(dbClasses);
+            } catch (error) {
+                console.error('Unable to load tutor classroom list:', error);
+                const savedData = localStorage.getItem('tutor_classroom_data');
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    setMyClasses(parsed.classes || []);
+                }
+            } finally {
+                setIsLoadingClasses(false);
+            }
+        }
+
+        if (isInitialized) {
+            loadTutorClasses();
+        }
+    }, [isInitialized]);
 
     // ==============================
     // SAVE TO DATABASE (NEW)
@@ -179,9 +214,56 @@ export default function ClassroomClient() {
     // ==============================
     // CLASSROOM ACTIONS
     // ==============================
-    const handleEnterClass = (cls: any) => {
+    const handleEnterClass = async (cls: any) => {
         setSelectedClass(cls);
         setView('CLASSROOM');
+        
+        // Load enrolled students
+        await loadEnrolledStudents(cls.id);
+    };
+
+    const loadEnrolledStudents = async (classroomId: string) => {
+        setIsLoadingStudents(true);
+        try {
+            const response = await fetch(`/api/tutor/classrooms/students?classroomId=${classroomId}`, {
+                method: 'GET',
+                credentials: 'same-origin',
+            });
+            const result = await response.json();
+            if (response.ok) {
+                setEnrolledStudents(result.students || []);
+            }
+        } catch (error) {
+            console.error('Failed to load enrolled students:', error);
+        } finally {
+            setIsLoadingStudents(false);
+        }
+    };
+
+    const handleRemoveStudent = async (enrollmentId: string) => {
+        if (!confirm('Are you sure you want to remove this student from the classroom?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `/api/tutor/classrooms/students?enrollmentId=${enrollmentId}&classroomId=${selectedClass.id}`,
+                {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                }
+            );
+
+            if (response.ok) {
+                setEnrolledStudents(enrolledStudents.filter(s => s.enrollmentId !== enrollmentId));
+                alert('Student removed successfully');
+            } else {
+                alert('Failed to remove student');
+            }
+        } catch (error) {
+            console.error('Failed to remove student:', error);
+            alert('An error occurred while removing the student');
+        }
     };
 
     const handleCreateClass = (e: FormEvent<HTMLFormElement>) => {
@@ -199,12 +281,33 @@ export default function ClassroomClient() {
         setShowCreateModal(false);
     };
 
-    const handleDeleteClass = (id: string, e: React.MouseEvent) => {
+    const handleDeleteClass = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (confirm("Are you sure you want to permanently delete this classroom? All materials and assignments will be lost.")) {
+        if (!confirm("Are you sure you want to permanently delete this classroom? All materials and assignments will be lost.")) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/tutor/classrooms?id=${encodeURIComponent(id)}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete classroom');
+            }
+
             setMyClasses(myClasses.filter(c => c.id !== id));
             setChapters(chapters.filter(ch => ch.classId !== id));
             setAssignments(assignments.filter(a => a.classId !== id));
+
+            if (selectedClass?.id === id) {
+                setSelectedClass(null);
+                setView('MANAGEMENT');
+            }
+        } catch (error) {
+            console.error('Unable to delete classroom:', error);
+            alert('Unable to delete classroom. Please try again.');
         }
     };
 
@@ -609,10 +712,55 @@ export default function ClassroomClient() {
 
                             {/* STUDENTS TAB */}
                             {activeTab === 'students' && (
-                                <div className="bg-white rounded-[2rem] border border-slate-100 p-12 text-center border-dashed">
-                                    <Users size={48} className="mx-auto text-slate-200 mb-4" />
-                                    <h3 className="text-lg font-bold text-slate-800">Student Roster</h3>
-                                    <p className="text-slate-400 text-sm mt-1">View and manage the students enrolled in {selectedClass.title}.</p>
+                                <div className="space-y-6 pb-10">
+                                    {isLoadingStudents ? (
+                                        <div className="bg-white rounded-[2rem] border border-slate-100 p-12 text-center">
+                                            <p className="text-slate-400">Loading students...</p>
+                                        </div>
+                                    ) : enrolledStudents.length === 0 ? (
+                                        <div className="bg-white rounded-[2rem] border border-slate-100 p-12 text-center border-dashed">
+                                            <Users size={48} className="mx-auto text-slate-200 mb-4" />
+                                            <h3 className="text-lg font-bold text-slate-800">No Students Yet</h3>
+                                            <p className="text-slate-400 text-sm mt-1">Students who have enrolled in this classroom will appear here.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <Users size={24} className="text-emerald-600" />
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-slate-900">Enrolled Students</h3>
+                                                    <p className="text-sm text-slate-500">{enrolledStudents.length} student{enrolledStudents.length !== 1 ? 's' : ''} enrolled</p>
+                                                </div>
+                                            </div>
+                                            {enrolledStudents.map((student) => (
+                                                <div key={student.enrollmentId} className="p-6 bg-white border border-slate-200 rounded-[2rem] flex items-center justify-between hover:border-emerald-200 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-5 flex-1">
+                                                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-[1.25rem] flex items-center justify-center font-bold text-sm">
+                                                            {student.fullName.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className="font-bold text-slate-900 text-lg">{student.fullName}</h4>
+                                                            <div className="flex items-center gap-4 mt-1">
+                                                                <p className="text-sm text-slate-500">{student.email}</p>
+                                                                {student.phone && <p className="text-sm text-slate-500">{student.phone}</p>}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
+                                                                {student.gradeLevel && <span className="bg-slate-100 px-2 py-1 rounded">Grade {student.gradeLevel}</span>}
+                                                                {student.locationCity && <span className="bg-slate-100 px-2 py-1 rounded">{student.locationCity}</span>}
+                                                                <span className="bg-slate-100 px-2 py-1 rounded">Enrolled {new Date(student.enrolledAt).toLocaleDateString()}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleRemoveStudent(student.enrollmentId)}
+                                                        className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all rounded-full"
+                                                    >
+                                                        <Trash2 size={20} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

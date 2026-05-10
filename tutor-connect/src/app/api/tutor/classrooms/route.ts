@@ -2,11 +2,60 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 
+export async function GET(request: NextRequest) {
+    const session = await auth();
+    if (!session || session.user.role !== 'TUTOR') {
+        return NextResponse.json({ classes: [] }, { status: 401 });
+    }
+
+    const tutor = await prisma.tutorProfile.findUnique({
+        where: { userId: session.user.id },
+    });
+
+    if (!tutor) {
+        return NextResponse.json({ classes: [] });
+    }
+
+    const classrooms = await prisma.classroom.findMany({
+        where: {
+            OR: [
+                { tutorId: tutor.id },
+                { booking: { tutorId: tutor.id } },
+            ],
+        },
+        include: {
+            booking: true,
+            enrollments: true,
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    const classes = classrooms.map((cls) => ({
+        id: cls.id,
+        title: cls.title || cls.booking?.subjectName || 'Untitled Classroom',
+        subject: cls.subject || cls.booking?.subjectName || 'General',
+        students: cls.enrollments?.length || 0,
+        lastActive: cls.createdAt.toLocaleString(),
+        progress: 0,
+        bookingId: cls.bookingId || null,
+    }));
+
+    return NextResponse.json({ classes });
+}
+
 export async function POST(request: NextRequest) {
     try {
         const session = await auth();
         if (!session || session.user.role !== 'TUTOR') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const tutor = await prisma.tutorProfile.findUnique({
+            where: { userId: session.user.id },
+        });
+
+        if (!tutor) {
+            return NextResponse.json({ error: 'Tutor profile not found' }, { status: 404 });
         }
 
         const { classId, title, subject, chapters, assignments } = await request.json();
@@ -20,7 +69,7 @@ export async function POST(request: NextRequest) {
             classroom = await prisma.classroom.create({
                 data: {
                     id: classId,
-                    tutorId: session.user.id,
+                    tutorId: tutor.id,
                     title,
                     subject,
                 },
@@ -40,7 +89,7 @@ export async function POST(request: NextRequest) {
                     },
                     create: {
                         classroomId: classroom.id,
-                        tutorId: session.user.id,
+                        tutorId: tutor.id,
                         resourceType: 'chapter',
                         title: chapter.title,
                         content: chapter.content,
@@ -64,7 +113,7 @@ export async function POST(request: NextRequest) {
                     },
                     create: {
                         classroomId: classroom.id,
-                        tutorId: session.user.id,
+                        tutorId: tutor.id,
                         resourceType: 'assignment',
                         title: assignment.title,
                         content: assignment.content,
@@ -80,4 +129,38 @@ export async function POST(request: NextRequest) {
         console.error('Error saving classroom:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
+}
+
+export async function DELETE(request: NextRequest) {
+    const session = await auth();
+    if (!session || session.user.role !== 'TUTOR') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const tutor = await prisma.tutorProfile.findUnique({
+        where: { userId: session.user.id },
+    });
+
+    if (!tutor) {
+        return NextResponse.json({ error: 'Tutor profile not found' }, { status: 404 });
+    }
+
+    const classroomId = request.nextUrl.searchParams.get('id');
+    if (!classroomId) {
+        return NextResponse.json({ error: 'Classroom ID is required' }, { status: 400 });
+    }
+
+    const classroom = await prisma.classroom.findUnique({
+        where: { id: classroomId },
+    });
+
+    if (!classroom || classroom.tutorId !== tutor.id) {
+        return NextResponse.json({ error: 'Classroom not found or access denied' }, { status: 404 });
+    }
+
+    await prisma.classroom.delete({
+        where: { id: classroomId },
+    });
+
+    return NextResponse.json({ success: true });
 }
