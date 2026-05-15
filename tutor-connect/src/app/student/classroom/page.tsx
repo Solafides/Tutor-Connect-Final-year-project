@@ -252,15 +252,7 @@ export default function StudentClassroomPage() {
                                     </div>
 
                                     <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
-                                        <div className="flex-1 mr-6">
-                                            <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                                <span>Learning Progress</span>
-                                                <span>{cls.progress}%</span>
-                                            </div>
-                                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                <div className={`${brandGreen} h-full rounded-full transition-all duration-700`} style={{ width: `${cls.progress}%` }}></div>
-                                            </div>
-                                        </div>
+                                        <div className="flex-1 mr-6"></div>
                                         <button
                                             onClick={() => handleEnterClass(cls)}
                                             className={`bg-slate-900 text-white p-3.5 rounded-[1.25rem] hover:${brandGreen} transition-all shadow-xl active:scale-90`}
