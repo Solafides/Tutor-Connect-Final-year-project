@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     BookOpen,
     Video,
@@ -21,23 +22,43 @@ import {
  * Path: src/app/student/classroom/page.tsx
  */
 
+interface Resource {
+    id: string;
+    title: string;
+    description: string | null;
+    resourceType: string;
+    fileUrl: string | null;
+    content: string | null;
+    uploadedAt: string;
+}
+
 interface Classroom {
     id: string;
+    bookingId: string;
     title: string;
     subject: string;
     tutorName: string;
     lastActive: string;
     progress: number;
+    meetingLink?: string | null;
+    resources: Resource[];
 }
 
 type ViewMode = 'LIST' | 'CLASSROOM';
 type TabMode = 'lessons' | 'tasks' | 'resources';
 
 export default function StudentClassroomPage() {
-    const[view, setView] = useState<ViewMode>('LIST');
+    const [view, setView] = useState<ViewMode>('LIST');
     const [activeTab, setActiveTab] = useState<TabMode>('lessons');
     const [isMeetingActive, setIsMeetingActive] = useState<boolean>(false);
     const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+    const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
+    const [enrollError, setEnrollError] = useState<string | null>(null);
+
+    const searchParams = useSearchParams();
+    const meetingLinkParam = searchParams?.get('meetingLink');
 
     // Brand colors (Emerald 500)
     const brandGreen = "bg-[#10b981]";
@@ -45,34 +66,109 @@ export default function StudentClassroomPage() {
     const brandGreenText = "text-[#10b981]";
     const brandGreenLight = "bg-[#ecfdf5]";
 
-    // Dynamic State: Initialized as empty so it only shows classes after joining
-    const[enrolledClasses, setEnrolledClasses] = useState<Classroom[]>([]);
+    const [enrolledClasses, setEnrolledClasses] = useState<Classroom[]>([]);
     const [selectedClass, setSelectedClass] = useState<Classroom | null>(null);
+
+    useEffect(() => {
+        async function loadClasses() {
+            setIsLoading(true);
+            setFetchError(null);
+
+            try {
+                const response = await fetch('/api/student/classrooms', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to load classes: ${response.statusText}`);
+                }
+                const result = await response.json();
+                const classes = result.classes || [];
+                setEnrolledClasses(classes);
+
+                if (meetingLinkParam) {
+                    const directClass = classes.find((cls: Classroom) => cls.meetingLink === meetingLinkParam);
+                    if (directClass) {
+                        setSelectedClass(directClass);
+                        setView('CLASSROOM');
+                        setIsMeetingActive(true);
+                    }
+                }
+            } catch (error: any) {
+                setFetchError(error?.message || 'Unable to load your classes.');
+                setEnrolledClasses([]);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        loadClasses();
+    }, [meetingLinkParam]);
 
     const handleEnterClass = (cls: Classroom) => {
         setSelectedClass(cls);
         setView('CLASSROOM');
     };
 
-    const handleJoinClass = (e: FormEvent<HTMLFormElement>) => {
+    const handleJoinClass = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        const classId = (formData.get('classId') as string).toUpperCase();
+        setIsEnrolling(true);
+        setEnrollError(null);
 
-        // Logic for Use Case 21: Join Class
-        // This dynamically adds the class to your local list
-        const newEnrollment: Classroom = {
-            id: classId,
-            title: `Classroom ${classId}`,
-            subject: "New Subject",
-            tutorName: "Verified Tutor",
-            lastActive: "Just now",
-            progress: 0
-        };
+        try {
+            const formData = new FormData(e.currentTarget);
+            const classroomId = (formData.get('classId') as string).trim();
 
-        setEnrolledClasses([newEnrollment, ...enrolledClasses]);
-        setShowJoinModal(false);
+            if (!classroomId) {
+                setEnrollError('Please enter a classroom ID');
+                setIsEnrolling(false);
+                return;
+            }
+
+            const response = await fetch('/api/student/classrooms/enroll', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ classroomId }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                setEnrollError(result.error || 'Failed to enroll in classroom');
+                setIsEnrolling(false);
+                return;
+            }
+
+            // Add the new classroom to the list
+            setEnrolledClasses([result.classroom, ...enrolledClasses]);
+            setShowJoinModal(false);
+            setEnrollError(null);
+            (e.target as HTMLFormElement).reset();
+        } catch (error: any) {
+            setEnrollError(error?.message || 'An error occurred while enrolling');
+        } finally {
+            setIsEnrolling(false);
+        }
     };
+
+    const lessonResources = selectedClass?.resources.filter((resource) => {
+        const type = resource.resourceType?.toLowerCase() || '';
+        return ['lesson', 'video', 'chapter', 'document', 'reading'].includes(type);
+    }) ?? [];
+
+    const assignmentResources = selectedClass?.resources.filter((resource) => {
+        const type = resource.resourceType?.toLowerCase() || '';
+        return ['assignment', 'task', 'homework', 'exercise'].includes(type);
+    }) ?? [];
+
+    const otherResources = selectedClass?.resources.filter((resource) => {
+        const type = resource.resourceType?.toLowerCase() || '';
+        return !['lesson', 'video', 'chapter', 'document', 'reading', 'assignment', 'task', 'homework', 'exercise'].includes(type);
+    }) ?? [];
 
     const toggleMeeting = () => setIsMeetingActive(!isMeetingActive);
 
@@ -112,9 +208,11 @@ export default function StudentClassroomPage() {
                             <div>
                                 <h2 className="text-2xl font-black text-slate-800 tracking-tight">Student Classroom</h2>
                                 <p className="text-slate-500 font-medium">
-                                    {enrolledClasses.length > 0
-                                        ? `Continue your learning in ${enrolledClasses.length} active classes.`
-                                        : "You haven't joined any classes yet. Join one using a Class ID."}
+                                    {isLoading
+                                        ? 'Loading your enrolled classes...'
+                                        : enrolledClasses.length > 0
+                                            ? `Continue your learning in ${enrolledClasses.length} active classes.`
+                                            : "You haven't joined any classes yet. Join one using a Class ID."}
                                 </p>
                             </div>
                             <button
@@ -125,6 +223,11 @@ export default function StudentClassroomPage() {
                             </button>
                         </div>
 
+                        {fetchError && (
+                            <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700 font-bold mb-6">
+                                {fetchError}
+                            </div>
+                        )}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {enrolledClasses.map((cls) => (
                                 <div key={cls.id} className="bg-white rounded-[2.5rem] border border-slate-200 p-7 hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden">
@@ -217,28 +320,89 @@ export default function StudentClassroomPage() {
 
                             {activeTab === 'lessons' && (
                                 <div className="space-y-4 pb-20">
-                                    <LessonItem title="Chapter 1: Foundations of Theory" status="completed" />
-                                    <LessonItem title="Chapter 2: Core Analysis & Logic" status="current" />
-                                    <LessonItem title="Chapter 3: Final Examination Prep" status="locked" />
+                                    {lessonResources.length > 0 ? (
+                                        lessonResources.map((resource) => (
+                                            <LessonItem
+                                                key={resource.id}
+                                                title={resource.title}
+                                                status={resource.resourceType || 'lesson'}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-10 text-center text-slate-500">
+                                            No lesson materials have been published yet for this class.
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
                             {activeTab === 'tasks' && (
-                                <div className="space-y-6">
-                                    <div className="p-7 bg-white border border-slate-200 rounded-[2rem] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center">
-                                                <ClipboardList size={24} />
+                                <div className="space-y-6 pb-20">
+                                    {assignmentResources.length > 0 ? (
+                                        assignmentResources.map((resource) => (
+                                            <div key={resource.id} className="p-7 bg-white border border-slate-200 rounded-[2rem] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center">
+                                                        <ClipboardList size={24} />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-900">{resource.title}</h4>
+                                                        {resource.description && <p className="text-xs text-slate-400">{resource.description}</p>}
+                                                        {resource.uploadedAt && <p className="text-xs text-slate-400 mt-1">Uploaded: {new Date(resource.uploadedAt).toLocaleDateString()}</p>}
+                                                    </div>
+                                                </div>
+                                                <a
+                                                    href={resource.fileUrl || '#'}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className={`${brandGreen} text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-50 flex items-center gap-2`}
+                                                >
+                                                    <Send size={18} /> View
+                                                </a>
                                             </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-900">Weekly Mathematics Assignment</h4>
-                                                <p className="text-xs text-slate-400">Due: Feb 15, 2026</p>
-                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-10 text-center text-slate-500">
+                                            No assignments or tasks have been released for this class yet.
                                         </div>
-                                        <button className={`${brandGreen} text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-50 flex items-center gap-2`}>
-                                            <Send size={18} /> Turn In
-                                        </button>
-                                    </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'resources' && (
+                                <div className="space-y-6 pb-20">
+                                    {otherResources.length > 0 ? (
+                                        otherResources.map((resource) => (
+                                            <div key={resource.id} className="p-7 bg-white border border-slate-200 rounded-[2rem] space-y-4">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-900">{resource.title}</h4>
+                                                        {resource.description && <p className="text-xs text-slate-400 mt-1">{resource.description}</p>}
+                                                    </div>
+                                                    {resource.fileUrl && (
+                                                        <a
+                                                            href={resource.fileUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className={`${brandGreen} text-white px-4 py-2 rounded-2xl text-xs font-bold uppercase tracking-[0.15em]`}
+                                                        >
+                                                            Open
+                                                        </a>
+                                                    )}
+                                                </div>
+                                                {resource.content && (
+                                                    <p className="text-sm text-slate-500">{resource.content}</p>
+                                                )}
+                                                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-black">
+                                                    {resource.resourceType || 'resource'} • Uploaded {new Date(resource.uploadedAt).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-10 text-center text-slate-500">
+                                            No extra resources are available yet for this class.
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -251,16 +415,21 @@ export default function StudentClassroomPage() {
                         <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-10 animate-in zoom-in-95 duration-200">
                             <div className="flex justify-between items-center mb-8">
                                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Join Classroom</h2>
-                                <button onClick={() => setShowJoinModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
+                                <button onClick={() => { setShowJoinModal(false); setEnrollError(null); }} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
                             </div>
+                            {enrollError && (
+                                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 text-sm text-red-700 font-semibold">
+                                    {enrollError}
+                                </div>
+                            )}
                             <form onSubmit={handleJoinClass} className="space-y-6">
                                 <div>
                                     <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Class ID / Invite Code</label>
-                                    <input required name="classId" className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4.5 text-slate-800 font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-emerald-500 transition-all uppercase tracking-widest" placeholder="E.G. CLS_123" />
+                                    <input required name="classId" disabled={isEnrolling} className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4.5 text-slate-800 font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-emerald-500 transition-all uppercase tracking-widest disabled:opacity-50" placeholder="E.G. CLS_123" />
                                     <p className="text-[10px] text-slate-400 mt-3 ml-1">Enter the unique code provided by your tutor.</p>
                                 </div>
-                                <button type="submit" className={`w-full ${brandGreen} text-white py-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-100 active:scale-95 mt-4`}>
-                                    Join Now
+                                <button type="submit" disabled={isEnrolling} className={`w-full ${brandGreen} text-white py-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-100 active:scale-95 mt-4 disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                    {isEnrolling ? 'Enrolling...' : 'Join Now'}
                                 </button>
                             </form>
                         </div>

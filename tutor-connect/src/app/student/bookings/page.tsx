@@ -33,6 +33,7 @@ export default async function StudentBookingsPage() {
                     user: true,
                 },
             },
+            classroom: true,
         },
     });
 
@@ -107,8 +108,16 @@ export default async function StudentBookingsPage() {
                                             </button>
                                         </form>
                                     )}
-                                    {booking.status === 'ACCEPTED' && booking.isPaid && (
-                                        <ConfirmLessonButton bookingId={booking.id} />
+                                    {booking.status === 'ACCEPTED' && booking.isPaid && booking.classroom?.meetingLink && (
+                                        <Link
+                                            href={`/student/classroom?meetingLink=${encodeURIComponent(booking.classroom.meetingLink)}`}
+                                            className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700"
+                                        >
+                                            Join Live Session
+                                        </Link>
+                                    )}
+                                    {booking.status === 'ACCEPTED' && booking.isPaid && !booking.classroom?.meetingLink && (
+                                        <span className="text-xs text-slate-500">Waiting for tutor to start the live session.</span>
                                     )}
                                 </div>
                             </div>

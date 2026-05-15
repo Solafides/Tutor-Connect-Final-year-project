@@ -17,7 +17,12 @@ export default async function TutorBookingDetailsPage(props: { params: Promise<{
         where: { userId: session.user.id },
     });
 
-    if (!tutorProfile) redirect('/tutor/profile');
+    if (!tutorProfile) {
+        redirect('/tutor/profile');
+        return <div />;
+    }
+
+    const tutorId = tutorProfile.id;
 
     const booking = await prisma.booking.findUnique({
         where: {
@@ -28,6 +33,7 @@ export default async function TutorBookingDetailsPage(props: { params: Promise<{
             student: {
                 include: { user: true },
             },
+            classroom: true,
         },
     });
 
@@ -45,6 +51,23 @@ export default async function TutorBookingDetailsPage(props: { params: Promise<{
         revalidatePath('/tutor/dashboard');
         revalidatePath('/tutor/bookings');
         redirect('/tutor/bookings');
+    }
+
+    async function startSession(formData: FormData) {
+        'use server';
+        const bookingId = formData.get('bookingId') as string;
+        const meetingId = `TutorConnect_Booking_${bookingId}`;
+        const meetingLink = `https://meet.jit.si/${meetingId}`;
+
+        await prisma.classroom.upsert({
+            where: { bookingId },
+            create: { bookingId, tutorId, meetingLink },
+            update: { meetingLink, tutorId },
+        });
+
+        revalidatePath(`/tutor/bookings/${bookingId}`);
+        revalidatePath('/student/bookings');
+        redirect(`/tutor/bookings/${bookingId}`);
     }
 
     async function declineBooking() {
@@ -235,10 +258,34 @@ export default async function TutorBookingDetailsPage(props: { params: Promise<{
                                 <div>
                                     <p className="text-sm font-medium text-blue-900">Booking Accepted</p>
                                     <p className="text-sm text-blue-700">You have accepted this session. Please make sure to be available on the scheduled date and time.</p>
+                                    {booking.classroom?.meetingLink && (
+                                        <p className="text-sm text-blue-700 mt-2">Live session link created. Your student can join from their booking page.</p>
+                                    )}
                                 </div>
                             </div>
-                            
-                            {/* If there was a classroom link or something, we could add it here */}
+
+                            <div className="space-y-3 w-full sm:w-auto">
+                                {booking.classroom?.meetingLink ? (
+                                    <Link
+                                        href={booking.classroom.meetingLink}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="w-full inline-flex justify-center items-center px-6 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors"
+                                    >
+                                        Open Live Session
+                                    </Link>
+                                ) : (
+                                    <form action={startSession} className="w-full">
+                                        <input type="hidden" name="bookingId" value={booking.id} />
+                                        <button
+                                            type="submit"
+                                            className="w-full inline-flex justify-center items-center px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
+                                        >
+                                            Start Live Session
+                                        </button>
+                                    </form>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
