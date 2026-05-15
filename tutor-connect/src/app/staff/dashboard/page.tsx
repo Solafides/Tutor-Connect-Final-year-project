@@ -29,7 +29,8 @@ import {
     Clock,
     UserPlus,
     Flag,
-    Calendar
+    Calendar,
+    Menu
 } from 'lucide-react';
 
 import { auth, signOut } from '@/auth';
@@ -52,6 +53,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     const manageTutorId = params?.manageId || null;
     const viewFilesId = params?.viewFiles || null;
     const rejectTutorId = params?.rejectId || null;
+    const isMenuOpen = params?.menu === 'open';
 
     // 3. Comprehensive Database Fetch
     // We fetch everything needed for all tabs to ensure no "null" errors
@@ -204,8 +206,18 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
 
+            {/* Mobile Menu Overlay */}
+            {isMenuOpen && (
+                <Link href={`/staff/dashboard?tab=${activeTab}`} className="fixed inset-0 bg-slate-900/50 z-[50] md:hidden backdrop-blur-sm"></Link>
+            )}
+
             {/* --- SIDEBAR (EMERALD THEME) --- */}
-            <aside className="w-64 bg-white border-r border-slate-200 hidden lg:flex flex-col sticky top-0 h-screen z-20">
+            <aside className={`w-64 bg-white border-r border-slate-200 flex-col h-screen z-[60] ${isMenuOpen ? 'fixed inset-y-0 left-0 flex shadow-2xl' : 'hidden md:flex sticky top-0'}`}>
+                {isMenuOpen && (
+                    <Link href={`/staff/dashboard?tab=${activeTab}`} className="absolute top-4 right-4 p-2 text-slate-700 rounded-md md:hidden">
+                        <span className="material-symbols-outlined text-3xl">close</span>
+                    </Link>
+                )}
                 <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                     <div className="bg-emerald-600 p-2.5 rounded-2xl text-white shadow-lg shadow-emerald-100">
                         <ShieldCheck size={24} />
@@ -251,21 +263,26 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
             <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
 
                 {/* Header */}
-                <header className="bg-white border-b border-slate-200 px-8 py-6 flex items-center justify-between z-10">
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">
-                            {activeTab.replace('-', ' ')}
-                        </h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                Live System Monitor • {new Date().toLocaleDateString()}
-                            </p>
+                <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-6 flex items-center justify-between z-10">
+                    <div className="flex items-center gap-4">
+                        <Link href={`/staff/dashboard?tab=${activeTab}&menu=open`} className="md:hidden -m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-slate-700">
+                            <span className="material-symbols-outlined text-3xl">menu</span>
+                        </Link>
+                        <div>
+                            <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">
+                                {activeTab.replace('-', ' ')}
+                            </h1>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:block">
+                                    Live System Monitor • {new Date().toLocaleDateString()}
+                                </p>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                        <form method="GET" className="relative group">
+                    <div className="flex items-center gap-3 md:gap-6">
+                        <form method="GET" className="relative group hidden lg:block">
                             <input type="hidden" name="tab" value={activeTab} />
                             <input
                                 type="text"

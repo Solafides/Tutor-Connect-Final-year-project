@@ -24,7 +24,8 @@ import {
     Briefcase,
     X,
     Download,
-    Trash2
+    Trash2,
+    Menu
 } from 'lucide-react';
 import FinancialCharts from './FinancialCharts';
 import DeleteUserForm from './DeleteUserForm';
@@ -48,6 +49,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
     const searchQuery = params?.q || '';
     const showCreateStaffModal = params?.modal === 'new-staff';
     const showCreateUserModal = params?.modal === 'new-user';
+    const isMenuOpen = params?.menu === 'open';
 
     // 3. Fetch Dynamic Data from Database (Includes Profiles to get real names)
     const allUsers = await prisma.user.findMany({
@@ -171,8 +173,18 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
 
+            {/* Mobile Menu Overlay */}
+            {isMenuOpen && (
+                <Link href={`/admin/dashboard?tab=${activeTab}`} className="fixed inset-0 bg-slate-900/50 z-[50] md:hidden backdrop-blur-sm"></Link>
+            )}
+
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-slate-200 hidden lg:flex flex-col sticky top-0 h-screen z-20">
+            <aside className={`w-64 bg-white border-r border-slate-200 flex-col h-screen z-[60] ${isMenuOpen ? 'fixed inset-y-0 left-0 flex shadow-2xl' : 'hidden md:flex sticky top-0'}`}>
+                {isMenuOpen && (
+                    <Link href={`/admin/dashboard?tab=${activeTab}`} className="absolute top-4 right-4 p-2 text-slate-700 rounded-md md:hidden">
+                        <span className="material-symbols-outlined text-3xl">close</span>
+                    </Link>
+                )}
                 <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                     <div className="bg-emerald-600 p-2 rounded-xl text-white shadow-md shadow-emerald-200">
                         <ShieldCheck size={22} />
@@ -205,15 +217,20 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
             <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
 
                 {/* Header */}
-                <header className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between z-10">
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight capitalize">
-                            {activeTab.replace('-', ' ')}
-                        </h1>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">System Administration</p>
+                <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-5 flex items-center justify-between z-10">
+                    <div className="flex items-center gap-4">
+                        <Link href={`/admin/dashboard?tab=${activeTab}&menu=open`} className="md:hidden -m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-slate-700">
+                            <span className="material-symbols-outlined text-3xl">menu</span>
+                        </Link>
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-900 tracking-tight capitalize">
+                                {activeTab.replace('-', ' ')}
+                            </h1>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 hidden md:block">System Administration</p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <form method="GET" className="relative">
+                    <div className="flex items-center gap-3 md:gap-6">
+                        <form method="GET" className="relative hidden lg:block">
                             <input type="hidden" name="tab" value={activeTab} />
                             <input
                                 type="text"
