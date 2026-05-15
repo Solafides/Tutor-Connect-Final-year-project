@@ -230,7 +230,7 @@ export default async function LandingPage() {
             </div>
           </div>
           <div className="mt-8 border-t border-slate-100 pt-8 text-center">
-            <p className="text-xs text-slate-500">&copy; 2024 Tutor Connect. All rights reserved.</p>
+            <p className="text-xs text-slate-500">&copy; 2026 Tutor Connect. All rights reserved.</p>
           </div>
         </div>
       </footer>
