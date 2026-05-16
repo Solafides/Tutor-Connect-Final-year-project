@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { sendTransactionEmail } from '@/lib/mail';
 
 export async function GET(req: Request) {
     try {
@@ -82,6 +83,22 @@ export async function GET(req: Request) {
                     }
                 });
             });
+
+            // Fetch user for email
+            const student = await prisma.studentProfile.findUnique({
+                where: { id: booking.studentId },
+                include: { user: { include: { wallet: true } } }
+            });
+
+            if (student && student.user && student.user.email) {
+                await sendTransactionEmail(
+                    student.user.email,
+                    student.fullName,
+                    'DEBIT',
+                    Number(booking.totalAmount),
+                    student.user.wallet ? Number(student.user.wallet.balance) : 0
+                );
+            }
         }
 
         // We could redirect, but usually this is called by the frontend or webhook.

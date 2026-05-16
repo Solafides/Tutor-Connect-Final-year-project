@@ -74,7 +74,8 @@ export default async function TutorDashboardPage() {
         prisma.booking.findMany({
             where: {
                 tutorId: tutorProfile.id,
-                escrowStatus: 'HELD'
+                escrowStatus: 'HELD',
+                isPaid: true
             }
         })
     ]);

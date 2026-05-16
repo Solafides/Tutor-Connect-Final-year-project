@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import ConfirmLessonButton from '@/components/ConfirmLessonButton';
+import { payForBooking } from '@/app/actions/payment';
 
 export default async function StudentDashboardPage() {
     const session = await auth();
@@ -26,7 +27,7 @@ export default async function StudentDashboardPage() {
     }
 
     // Fetch student data
-    const [wallet, recentBookings] = await Promise.all([
+    const [wallet, allBookings] = await Promise.all([
         prisma.wallet.findUnique({
             where: { userId: session.user.id },
             include: {
@@ -38,7 +39,6 @@ export default async function StudentDashboardPage() {
         }),
         prisma.booking.findMany({
             where: { studentId: studentProfile.id },
-            take: 5,
             orderBy: { createdAt: 'desc' },
             include: {
                 tutor: {
@@ -49,6 +49,8 @@ export default async function StudentDashboardPage() {
             },
         }),
     ]);
+
+    const recentBookings = allBookings.slice(0, 5);
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -94,7 +96,7 @@ export default async function StudentDashboardPage() {
                         <div>
                             <p className="text-sm font-medium text-slate-600">Active Bookings</p>
                             <p className="mt-2 text-2xl font-bold text-slate-900">
-                                {recentBookings.filter(b => b.status === 'ACCEPTED').length}
+                                {allBookings.filter(b => b.status === 'ACCEPTED').length}
                             </p>
                         </div>
                         <div className="rounded-full bg-blue-100 p-3">
@@ -117,7 +119,7 @@ export default async function StudentDashboardPage() {
                         <div>
                             <p className="text-sm font-medium text-slate-600">Completed Sessions</p>
                             <p className="mt-2 text-2xl font-bold text-slate-900">
-                                {recentBookings.filter(b => b.status === 'COMPLETED').length}
+                                {allBookings.filter(b => b.status === 'COMPLETED').length}
                             </p>
                         </div>
                         <div className="rounded-full bg-green-100 p-3">
@@ -134,8 +136,8 @@ export default async function StudentDashboardPage() {
                         <div>
                             <p className="text-sm font-medium text-slate-600">Total Spent</p>
                             <p className="mt-2 text-2xl font-bold text-slate-900">
-                                {recentBookings
-                                    .filter(b => b.status === 'COMPLETED')
+                                {allBookings
+                                    .filter(b => b.isPaid)
                                     .reduce((sum, b) => sum + Number(b.totalAmount), 0)
                                     .toFixed(2)} ETB
                             </p>
@@ -204,7 +206,19 @@ export default async function StudentDashboardPage() {
                                         <p className="mt-1 text-sm font-medium text-slate-900">
                                             {Number(booking.totalAmount).toFixed(2)} ETB
                                         </p>
-                                        {booking.status === 'ACCEPTED' && booking.escrowStatus === 'HELD' && (
+                                        {booking.status === 'ACCEPTED' && !booking.isPaid && (
+                                            <div className="mt-2">
+                                                <form action={payForBooking.bind(null, booking.id)}>
+                                                    <button
+                                                        type="submit"
+                                                        className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark"
+                                                    >
+                                                        Pay Now
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        )}
+                                        {booking.status === 'ACCEPTED' && booking.isPaid && booking.escrowStatus === 'HELD' && (
                                             <div className="mt-2">
                                                 <ConfirmLessonButton bookingId={booking.id} />
                                             </div>

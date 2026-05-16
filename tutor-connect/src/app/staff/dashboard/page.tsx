@@ -94,6 +94,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     const pendingTutors = tutors.filter((t: any) => t.verificationStatus === 'PENDING');
     const verifiedTutors = tutors.filter((t: any) => t.verificationStatus === 'APPROVED');
     const activeBookings = bookings.filter((b: any) => b.status === 'ACCEPTED' || b.status === 'PENDING');
+    const openComplaints = complaints.filter((c: any) => c.status === 'OPEN' || c.status === 'IN_REVIEW');
 
     const filteredPending = pendingTutors.filter((t: any) =>
         t.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,8 +116,6 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     const tutorToManage = manageTutorId ? tutors.find(t => t.id === manageTutorId) : null;
     const tutorToViewFiles = viewFilesId ? tutors.find(t => t.id === viewFilesId) : null;
     const tutorToReject = rejectTutorId ? tutors.find(t => t.id === rejectTutorId) : null;
-
-    const invalidManageId = manageTutorId && !tutorToManage;
 
     // ==========================================
     // 5. SERVER ACTIONS (Staff Operations)
@@ -211,6 +210,103 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
         redirect('/staff/dashboard?tab=tutors');
     }
 
+    async function handleResolveComplaint(formData: FormData) {
+        "use server";
+        const session = await auth();
+        if (!session?.user?.id) return;
+
+        const complaintId = formData.get('complaintId') as string;
+        const resolution = formData.get('resolution') as string;
+        const studentMessage = formData.get('studentMessage') as string;
+        const tutorMessage = formData.get('tutorMessage') as string;
+        const actionType = formData.get('actionType') as string; // 'REFUND' or 'RESOLVE_ONLY'
+
+        const complaint = await prisma.complaint.findUnique({
+            where: { id: complaintId },
+            include: {
+                booking: {
+                    include: { student: true, tutor: true }
+                }
+            }
+        });
+
+        if (!complaint) return;
+
+        if (actionType === 'REFUND') {
+            const studentId = complaint.booking.studentId;
+            const studentUser = await prisma.studentProfile.findUnique({
+                where: { id: studentId }
+            });
+
+            if (studentUser) {
+                // Find or create wallet
+                let wallet = await prisma.wallet.findUnique({ where: { userId: studentUser.userId } });
+                if (!wallet) {
+                    wallet = await prisma.wallet.create({ data: { userId: studentUser.userId, balance: 0, currency: 'ETB' } });
+                }
+
+                // Add refund transaction
+                const amount = complaint.booking.totalAmount;
+                await prisma.transaction.create({
+                    data: {
+                        walletId: wallet.id,
+                        type: 'REFUND',
+                        amount: amount,
+                        balanceAfter: Number(wallet.balance) + Number(amount),
+                        description: `Refund for booking: ${complaint.booking.subjectName}`,
+                        referenceId: `REFUND-${complaint.id}`
+                    }
+                });
+
+                // Update wallet balance
+                await prisma.wallet.update({
+                    where: { id: wallet.id },
+                    data: { balance: { increment: amount } }
+                });
+
+                // Update booking
+                await prisma.booking.update({
+                    where: { id: complaint.booking.id },
+                    data: { status: 'CANCELLED', escrowStatus: 'REFUNDED' }
+                });
+            }
+        }
+
+        // Always resolve complaint
+        await prisma.complaint.update({
+            where: { id: complaintId },
+            data: {
+                status: 'RESOLVED',
+                resolution: resolution,
+                resolvedBy: session.user.email || 'Staff',
+                resolvedAt: new Date()
+            }
+        });
+
+        // Add notifications if provided
+        if (studentMessage && studentMessage.trim() !== '') {
+            await prisma.notification.create({
+                data: {
+                    userId: complaint.booking.student.userId,
+                    title: 'Complaint Resolved',
+                    message: studentMessage
+                }
+            });
+        }
+        if (tutorMessage && tutorMessage.trim() !== '') {
+            await prisma.notification.create({
+                data: {
+                    userId: complaint.booking.tutor.userId,
+                    title: 'Complaint Resolved',
+                    message: tutorMessage
+                }
+            });
+        }
+
+        revalidatePath('/staff/dashboard');
+        redirect('/staff/dashboard?tab=support');
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
 
@@ -247,7 +343,13 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                     />
                     <SidebarItem icon={<Users size={20} />} label="Manage Tutors" tabName="tutors" active={activeTab === 'tutors'} />
                     <SidebarItem icon={<CalendarCheck size={20} />} label="All Bookings" tabName="bookings" active={activeTab === 'bookings'} />
-                    <SidebarItem icon={<AlertCircle size={20} />} label="Support Tickets" tabName="support" active={activeTab === 'support'} />
+                    <SidebarItem
+                        icon={<AlertCircle size={20} />}
+                        label="Support Tickets"
+                        tabName="support"
+                        active={activeTab === 'support'}
+                        badge={openComplaints.length > 0 ? openComplaints.length : undefined}
+                    />
                     {session.user.role === 'ADMIN' && (
                         <SidebarItem icon={<Settings size={20} />} label="System Settings" tabName="settings" active={activeTab === 'settings'} />
                     )}
@@ -529,8 +631,8 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                     </td>
                                                     <td className="p-6">
                                                         <span className={`text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest ${tutor.user.status === 'ACTIVE'
-                                                                ? 'bg-emerald-100 text-emerald-700'
-                                                                : 'bg-red-100 text-red-700'
+                                                            ? 'bg-emerald-100 text-emerald-700'
+                                                            : 'bg-red-100 text-red-700'
                                                             }`}>
                                                             {tutor.user.status}
                                                         </span>
@@ -616,6 +718,74 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                     </td>
                                                 </tr>
                                             ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB: SUPPORT TICKETS */}
+                    {activeTab === 'support' && (
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                                    <div>
+                                        <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Support & Complaints</h3>
+                                        <p className="text-xs text-slate-500 font-bold mt-1">Manage user issues and process refunds.</p>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-slate-200">
+                                            <tr>
+                                                <th className="p-6 pl-8">Issue</th>
+                                                <th className="p-6">Complainant</th>
+                                                <th className="p-6">Date</th>
+                                                <th className="p-6">Status</th>
+                                                <th className="p-6 pr-8 text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {complaints.map((complaint: any) => (
+                                                <tr key={complaint.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="p-6 pl-8">
+                                                        <div className="font-black text-slate-900">{complaint.subject.replace(/_/g, ' ')}</div>
+                                                        <div className="text-[10px] text-slate-400 truncate w-48 mt-0.5">{complaint.description}</div>
+                                                    </td>
+                                                    <td className="p-6">
+                                                        <div className="text-xs font-bold text-slate-700">{complaint.complainant}</div>
+                                                    </td>
+                                                    <td className="p-6">
+                                                        <div className="text-xs font-bold text-slate-500">
+                                                            {new Date(complaint.createdAt).toLocaleDateString()}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-6">
+                                                        <span className={`text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest ${complaint.status === 'RESOLVED' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-700'
+                                                            }`}>
+                                                            {complaint.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-6 pr-8 text-right">
+                                                        <Link
+                                                            href={`/staff/dashboard?tab=support&viewComplaint=${complaint.id}`}
+                                                            className="inline-flex items-center gap-2 text-xs font-black text-slate-600 bg-white border border-slate-200 px-4 py-2 rounded-xl hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm"
+                                                        >
+                                                            <Eye size={14} /> Review
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {complaints.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={5} className="p-20 text-center">
+                                                        <CheckCircle size={48} className="mx-auto text-slate-200 mb-4" />
+                                                        <p className="text-lg font-black text-slate-400 uppercase tracking-widest italic">No complaints found!</p>
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -749,8 +919,8 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                             <input type="hidden" name="userId" value={tutorToManage.user.id} />
                                             <input type="hidden" name="currentStatus" value={tutorToManage.user.status} />
                                             <button className={`w-full py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${tutorToManage.user.status === 'ACTIVE'
-                                                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                                    : 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
+                                                ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                                : 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
                                                 }`}>
                                                 {tutorToManage.user.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
                                             </button>
@@ -821,6 +991,105 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                     </div>
                 )}
 
+                {/* 4. COMPLAINT REVIEW MODAL */}
+                {complaintToView && (
+                    <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-md flex justify-center items-center p-6 animate-in zoom-in-95 duration-200">
+                        <div className="w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                            <div className="p-8 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Review Support Ticket</h2>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">ID: {complaintToView.id.substring(0, 8)}</p>
+                                </div>
+                                <Link href="/staff/dashboard?tab=support" className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm"><X size={24} /></Link>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto">
+                                <div className="p-8 space-y-6">
+                                    <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
+                                        <div>
+                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Issue</h4>
+                                            <p className="text-lg font-bold text-slate-800">{complaintToView.subject.replace(/_/g, ' ')}</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Description provided by student</h4>
+                                            <p className="text-sm font-medium text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed">{complaintToView.description}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 space-y-4">
+                                        <h4 className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Booking Context</h4>
+                                        <div className="grid grid-cols-2 gap-4 text-sm font-bold text-slate-700">
+                                            <div>Student: {complaintToView.booking.student.fullName}</div>
+                                            <div>Tutor: {complaintToView.booking.tutor.fullName}</div>
+                                            <div>Subject: {complaintToView.booking.subjectName}</div>
+                                            <div>Amount: {Number(complaintToView.booking.totalAmount)} ETB</div>
+                                            <div>Status: <StatusBadge status={complaintToView.booking.status} /></div>
+                                        </div>
+                                    </div>
+
+                                    {complaintToView.status === 'RESOLVED' && (
+                                        <div className="p-6 bg-slate-100 rounded-[2rem] border border-slate-200">
+                                            <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Resolution Notes</h4>
+                                            <p className="text-sm font-bold text-slate-800 mt-2">{complaintToView.resolution}</p>
+                                            <p className="text-[10px] font-bold text-slate-500 mt-2">Resolved by: {complaintToView.resolvedBy} at {new Date(complaintToView.resolvedAt).toLocaleString()}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {complaintToView.status !== 'RESOLVED' && (
+                                    <form action={handleResolveComplaint} className="p-8 border-t border-slate-100 bg-slate-50 space-y-4">
+                                        <input type="hidden" name="complaintId" value={complaintToView.id} />
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Staff Resolution Message</label>
+                                            <textarea
+                                                name="resolution"
+                                                required
+                                                placeholder="Explain how this issue was resolved..."
+                                                className="w-full mt-2 p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium"
+                                            ></textarea>
+                                        </div>
+                                        <div className="pt-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Message for Student</label>
+                                            <textarea
+                                                name="studentMessage"
+                                                placeholder="Leave a message for the student..."
+                                                className="w-full mt-2 p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium h-24"
+                                            ></textarea>
+                                        </div>
+                                        <div className="pt-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Message for Tutor</label>
+                                            <textarea
+                                                name="tutorMessage"
+                                                placeholder="Leave a message for the tutor..."
+                                                className="w-full mt-2 p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium h-24"
+                                            ></textarea>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 pt-2">
+                                            <button
+                                                type="submit"
+                                                name="actionType"
+                                                value="RESOLVE_ONLY"
+                                                className="w-full py-4 bg-slate-900 text-white font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+                                            >
+                                                Resolve (No Refund)
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                name="actionType"
+                                                value="REFUND"
+                                                className="w-full py-4 bg-red-500 text-white font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-red-600 transition-all shadow-xl shadow-red-200"
+                                            >
+                                                Cancel & Refund Student
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </main>
         </div>
     );
@@ -833,8 +1102,8 @@ function SidebarItem({ icon, label, tabName, active, badge }: { icon: React.Reac
         <Link
             href={`/staff/dashboard?tab=${tabName}`}
             className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all duration-300 group ${active
-                    ? 'bg-emerald-50 text-emerald-700 font-black shadow-sm'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-bold'
+                ? 'bg-emerald-50 text-emerald-700 font-black shadow-sm'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-bold'
                 }`}
         >
             <div className="flex items-center gap-4 text-sm tracking-tight">

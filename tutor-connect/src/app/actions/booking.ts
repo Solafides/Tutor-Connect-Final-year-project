@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { bookingSchema } from '@/lib/validations';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 
 export async function createBooking(formData: FormData) {
@@ -69,5 +70,6 @@ export async function createBooking(formData: FormData) {
         }
     });
 
+    revalidatePath('/student/bookings');
     redirect(`/student/bookings`);
 }

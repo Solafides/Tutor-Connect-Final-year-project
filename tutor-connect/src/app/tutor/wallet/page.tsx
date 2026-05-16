@@ -46,7 +46,7 @@ export default async function TutorWalletPage() {
                         {/* Withdrawal Request Form */}
                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                             <h3 className="text-lg font-semibold text-slate-900 mb-4">Request Withdrawal</h3>
-                            <WithdrawalForm balance={balance} />
+                            <WithdrawalForm balance={balance} userName={session.user.name || 'User'} />
                         </div>
                     </div>
                 </div>

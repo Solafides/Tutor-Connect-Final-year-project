@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -21,6 +22,7 @@ model User {
   studentProfile StudentProfile?
   tutorProfile   TutorProfile?
   wallet         Wallet?
+  notifications  Notification[]
 
   @@index([email])
   @@index([role])
@@ -41,20 +43,20 @@ model Session {
 }
 
 model StudentProfile {
-  id           String                @id @default(cuid())
-  userId       String                @unique @map("user_id")
-  fullName     String                @map("full_name")
+  id           String              @id @default(cuid())
+  userId       String              @unique @map("user_id")
+  fullName     String              @map("full_name")
   phone        String?
-  gradeLevel   String?               @map("grade_level")
-  locationCity String?               @map("location_city")
-  locationArea String?               @map("location_area")
+  gradeLevel   String?             @map("grade_level")
+  locationCity String?             @map("location_city")
+  locationArea String?             @map("location_area")
   avatar       String?
-  createdAt    DateTime              @default(now()) @map("created_at")
-  updatedAt    DateTime              @updatedAt @map("updated_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
   bookings     Booking[]
   reviews      Review[]
   enrollments  StudentEnrollment[]
-  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_profiles")
 }
@@ -80,8 +82,8 @@ model TutorProfile {
   updatedAt          DateTime               @updatedAt @map("updated_at")
   availability       Availability[]
   bookings           Booking[]
-  classrooms         Classroom[]
   classroomResources ClassroomResource[]
+  classrooms         Classroom[]
   reviews            Review[]
   user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjects           TutorSubject[]
@@ -192,9 +194,9 @@ model Booking {
   completedByStudent Boolean?       @default(false) @map("completed_by_student")
   completedAt        DateTime?      @map("completed_at")
   notes              String?
-  isPaid             Boolean        @default(false) @map("is_paid")
   createdAt          DateTime       @default(now()) @map("created_at")
   updatedAt          DateTime       @updatedAt @map("updated_at")
+  isPaid             Boolean        @default(false) @map("is_paid")
   student            StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
   tutor              TutorProfile   @relation(fields: [tutorId], references: [id], onDelete: Cascade)
   classroom          Classroom?
@@ -211,16 +213,16 @@ model Booking {
 model Classroom {
   id          String              @id @default(cuid())
   bookingId   String?             @unique @map("booking_id")
-  tutorId     String?             @map("tutor_id")
-  title       String?
-  subject     String?
   meetingLink String?             @map("meeting_link")
   meetingId   String?             @map("meeting_id")
   createdAt   DateTime            @default(now()) @map("created_at")
+  subject     String?
+  title       String?
+  tutorId     String?             @map("tutor_id")
   resources   ClassroomResource[]
-  enrollments StudentEnrollment[]
   booking     Booking?            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   tutor       TutorProfile?       @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  enrollments StudentEnrollment[]
 
   @@map("classrooms")
 }
@@ -247,9 +249,9 @@ model ClassroomResource {
   description  String?
   resourceType String       @map("resource_type")
   fileUrl      String?      @map("file_url")
-  fileName     String?      @map("file_name")
   content      String?
   uploadedAt   DateTime     @default(now()) @map("uploaded_at")
+  fileName     String?      @map("file_name")
   classroom    Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   tutor        TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
 
@@ -361,4 +363,35 @@ enum DayOfWeek {
   FRIDAY
   SATURDAY
   SUNDAY
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model VerificationToken {
+  id        String                @id @default(cuid())
+  email     String
+  token     String                @unique
+  type      VerificationTokenType
+  expiresAt DateTime              @map("expires_at")
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  @@unique([email, token])
+  @@map("verification_tokens")
+}
+
+enum VerificationTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
 }
