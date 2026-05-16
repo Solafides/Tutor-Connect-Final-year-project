@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserRole } from '@prisma/client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface NavigationProps {
     userRole?: UserRole;
@@ -15,6 +15,47 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
     const pathname = usePathname();
     const router = useRouter();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const notificationRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (userRole === 'STUDENT' || userRole === 'TUTOR') {
+            fetch('/api/notifications')
+                .then(res => res.ok ? res.json() : [])
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        setNotifications(data);
+                        setUnreadCount(data.filter((n: any) => !n.isRead).length);
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+    }, [userRole, pathname]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+                setIsNotificationsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleToggleNotifications = async () => {
+        setIsNotificationsOpen(!isNotificationsOpen);
+        if (!isNotificationsOpen && unreadCount > 0) {
+            try {
+                await fetch('/api/notifications', { method: 'PATCH' });
+                setUnreadCount(0);
+                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    };
 
     // FIXED: Now we also check if the user is on the /login or /register page
     // This completely removes the "Tutor Connect" top header on these pages so your sidebar fits perfectly
@@ -101,6 +142,49 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                                     <span className="material-symbols-outlined">logout</span>
                                     <span>Sign Out</span>
                                 </button>
+
+                                {/* Notification Bell */}
+                                <div className="relative" ref={notificationRef}>
+                                    <button
+                                        onClick={handleToggleNotifications}
+                                        className="relative p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-all"
+                                    >
+                                        <span className="material-symbols-outlined text-[26px]">notifications</span>
+                                        {unreadCount > 0 && (
+                                            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                                        )}
+                                    </button>
+
+                                    {/* Notification Dropdown */}
+                                    {isNotificationsOpen && (
+                                        <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                                <h3 className="font-bold text-slate-900">Notifications</h3>
+                                                {unreadCount > 0 && (
+                                                    <span className="text-xs font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">{unreadCount} New</span>
+                                                )}
+                                            </div>
+                                            <div className="max-h-96 overflow-y-auto">
+                                                {notifications.length === 0 ? (
+                                                    <div className="p-8 text-center text-slate-400">
+                                                        <span className="material-symbols-outlined text-4xl mb-2 opacity-50">notifications_off</span>
+                                                        <p className="text-sm">You have no notifications.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="divide-y divide-slate-100">
+                                                        {notifications.map(n => (
+                                                            <div key={n.id} className={`p-4 transition-colors ${n.isRead ? 'bg-white' : 'bg-emerald-50/50'}`}>
+                                                                <h4 className="text-sm font-bold text-slate-900 mb-1">{n.title}</h4>
+                                                                <p className="text-xs text-slate-600 leading-relaxed">{n.message}</p>
+                                                                <p className="text-[10px] text-slate-400 font-bold mt-2">{new Date(n.createdAt).toLocaleString()}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </>
                         ) : (
                             <div className="hidden md:flex items-center gap-4">

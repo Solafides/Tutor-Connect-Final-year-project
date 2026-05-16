@@ -34,6 +34,7 @@ export default async function StudentBookingsPage() {
                 },
             },
             classroom: true,
+            complaint: true,
         },
     });
 
@@ -118,6 +119,19 @@ export default async function StudentBookingsPage() {
                                     )}
                                     {booking.status === 'ACCEPTED' && booking.isPaid && !booking.classroom?.meetingLink && (
                                         <span className="text-xs text-slate-500">Waiting for tutor to start the live session.</span>
+                                    )}
+                                    {booking.isPaid && !booking.complaint && (
+                                        <Link
+                                            href={`/student/bookings/${booking.id}/complaint`}
+                                            className="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md shadow-sm text-slate-700 bg-white hover:bg-slate-50"
+                                        >
+                                            File Complaint / Refund
+                                        </Link>
+                                    )}
+                                    {booking.complaint && (
+                                        <span className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-amber-800 bg-amber-100">
+                                            Ticket Status: {booking.complaint.status}
+                                        </span>
                                     )}
                                 </div>
                             </div>

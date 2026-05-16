@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function WithdrawalForm({ balance }: { balance: number }) {
+export default function WithdrawalForm({ balance, userName }: { balance: number, userName?: string }) {
     const [banks, setBanks] = useState<any[]>([]);
     const [isLoadingBanks, setIsLoadingBanks] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,7 +36,8 @@ export default function WithdrawalForm({ balance }: { balance: number }) {
         setError(null);
         setSuccessMessage(null);
         
-        const formData = new FormData(e.currentTarget);
+        const form = e.currentTarget;
+        const formData = new FormData(form);
         const amount = Number(formData.get('amount'));
         const bankCode = formData.get('bankCode') as string;
         const accountName = formData.get('accountName') as string;
@@ -71,8 +72,8 @@ export default function WithdrawalForm({ balance }: { balance: number }) {
             const data = await res.json();
 
             if (res.ok) {
-                setSuccessMessage(data.message || 'Withdrawal initiated successfully!');
-                e.currentTarget.reset();
+                setSuccessMessage(`Dear ${userName || 'User'}, you have withdrawn ${amount} ETB successfully.`);
+                form.reset();
                 router.refresh();
             } else {
                 setError(data.error || 'Failed to process withdrawal.');
@@ -93,8 +94,25 @@ export default function WithdrawalForm({ balance }: { balance: number }) {
             )}
             
             {successMessage && (
-                <div className="p-3 text-sm text-emerald-700 bg-emerald-50 rounded-lg">
-                    {successMessage}
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
+                    <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full relative">
+                        <div className="text-center">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-emerald-100 mb-4">
+                                <span className="material-symbols-outlined text-emerald-600 text-2xl">
+                                    check_circle
+                                </span>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Withdrawal Initiated</h3>
+                            <p className="text-slate-600 mb-6">{successMessage}</p>
+                            <button
+                                type="button"
+                                onClick={() => setSuccessMessage(null)}
+                                className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold hover:bg-emerald-700 transition"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
