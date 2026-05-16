@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { Navigation } from '@/components/Navigation'
+import { SessionTimeout } from '@/components/SessionTimeout'
 
 /* existing imports */
 import type { Metadata } from 'next'
@@ -41,6 +42,7 @@ export default async function RootLayout({
             </head>
             <body className={lexend.className}>
                 <Navigation userRole={session?.user?.role} userName={session?.user?.name || undefined} />
+                {session && <SessionTimeout />}
                 {children}
             </body>
         </html>
