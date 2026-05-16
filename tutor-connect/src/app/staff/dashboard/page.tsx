@@ -29,7 +29,8 @@ import {
     Clock,
     UserPlus,
     Flag,
-    Calendar
+    Calendar,
+    Menu
 } from 'lucide-react';
 
 import { auth, signOut } from '@/auth';
@@ -37,6 +38,7 @@ import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
+import { ConfirmActionButton } from '@/components/ConfirmActionButton';
 
 export default async function StaffDashboardPage({ searchParams }: { searchParams: any }) {
     // 1. Authorization & Session Check
@@ -47,34 +49,40 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
 
     // 2. Parse Search Params (Awaited for Next.js 15 compatibility)
     const params = await searchParams;
-    const activeTab = params?.tab || 'overview';
-    const searchQuery = params?.q || '';
-    const manageTutorId = params?.manageId || null;
-    const viewFilesId = params?.viewFiles || null;
-    const rejectTutorId = params?.rejectId || null;
+    const normalizeParam = (value: string | string[] | undefined | null) => {
+        if (!value) return null;
+        return Array.isArray(value) ? value[0] : value;
+    };
+
+    const activeTab = normalizeParam(params?.tab) || 'overview';
+    const searchQuery = normalizeParam(params?.q) || '';
+    const manageTutorId = normalizeParam(params?.manageId);
+    const viewFilesId = normalizeParam(params?.viewFiles);
+    const rejectTutorId = normalizeParam(params?.rejectId);
+    const isMenuOpen = normalizeParam(params?.menu) === 'open';
 
     // 3. Comprehensive Database Fetch
     // We fetch everything needed for all tabs to ensure no "null" errors
     const [tutors, bookings, allSubjects, stats] = await Promise.all([
         prisma.tutorProfile.findMany({
             orderBy: { createdAt: 'desc' },
-            include: { 
-                user: true, 
-                subjects: { 
-                    include: { subject: true } 
-                }, 
-                verificationDocs: true 
+            include: {
+                user: true,
+                subjects: {
+                    include: { subject: true }
+                },
+                verificationDocs: true
             }
         }),
         prisma.booking.findMany({
             orderBy: { scheduledFor: 'desc' },
-            include: { 
-                tutor: true, 
-                student: true 
+            include: {
+                tutor: true,
+                student: true
             }
         }),
-        prisma.subject.findMany({ 
-            orderBy: { name: 'asc' } 
+        prisma.subject.findMany({
+            orderBy: { name: 'asc' }
         }),
         prisma.booking.aggregate({
             _sum: { totalAmount: true },
@@ -108,6 +116,8 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     const tutorToViewFiles = viewFilesId ? tutors.find(t => t.id === viewFilesId) : null;
     const tutorToReject = rejectTutorId ? tutors.find(t => t.id === rejectTutorId) : null;
 
+    const invalidManageId = manageTutorId && !tutorToManage;
+
     // ==========================================
     // 5. SERVER ACTIONS (Staff Operations)
     // ==========================================
@@ -120,9 +130,9 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
 
         await prisma.tutorProfile.update({
             where: { id: tutorId },
-            data: { 
+            data: {
                 verificationStatus: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-                rejectionReason: action === 'REJECT' ? reason : null 
+                rejectionReason: action === 'REJECT' ? reason : null
             }
         });
         revalidatePath('/staff/dashboard');
@@ -183,12 +193,12 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
         "use server";
         const userId = formData.get('userId') as string;
         const currentStatus = formData.get('currentStatus') as string;
-        
+
         await prisma.user.update({
             where: { id: userId },
             data: { status: currentStatus === 'ACTIVE' ? 'DEACTIVATED' : 'ACTIVE' }
         });
-        
+
         revalidatePath('/staff/dashboard');
     }
 
@@ -204,8 +214,18 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
 
+            {/* Mobile Menu Overlay */}
+            {isMenuOpen && (
+                <Link href={`/staff/dashboard?tab=${activeTab}`} className="fixed inset-0 bg-slate-900/50 z-[50] md:hidden backdrop-blur-sm"></Link>
+            )}
+
             {/* --- SIDEBAR (EMERALD THEME) --- */}
-            <aside className="w-64 bg-white border-r border-slate-200 hidden lg:flex flex-col sticky top-0 h-screen z-20">
+            <aside className={`w-64 bg-white border-r border-slate-200 flex-col h-screen z-[60] ${isMenuOpen ? 'fixed inset-y-0 left-0 flex shadow-2xl' : 'hidden md:flex sticky top-0'}`}>
+                {isMenuOpen && (
+                    <Link href={`/staff/dashboard?tab=${activeTab}`} className="absolute top-4 right-4 p-2 text-slate-700 rounded-md md:hidden">
+                        <span className="material-symbols-outlined text-3xl">close</span>
+                    </Link>
+                )}
                 <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                     <div className="bg-emerald-600 p-2.5 rounded-2xl text-white shadow-lg shadow-emerald-100">
                         <ShieldCheck size={24} />
@@ -218,12 +238,12 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
 
                 <nav className="flex-1 overflow-y-auto p-4 space-y-2 mt-4">
                     <SidebarItem icon={<Layout size={20} />} label="Overview" tabName="overview" active={activeTab === 'overview'} />
-                    <SidebarItem 
-                        icon={<UserCheck size={20} />} 
-                        label="Verifications" 
-                        tabName="verifications" 
-                        active={activeTab === 'verifications'} 
-                        badge={pendingTutors.length > 0 ? pendingTutors.length : undefined} 
+                    <SidebarItem
+                        icon={<UserCheck size={20} />}
+                        label="Verifications"
+                        tabName="verifications"
+                        active={activeTab === 'verifications'}
+                        badge={pendingTutors.length > 0 ? pendingTutors.length : undefined}
                     />
                     <SidebarItem icon={<Users size={20} />} label="Manage Tutors" tabName="tutors" active={activeTab === 'tutors'} />
                     <SidebarItem icon={<CalendarCheck size={20} />} label="All Bookings" tabName="bookings" active={activeTab === 'bookings'} />
@@ -251,21 +271,26 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
             <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
 
                 {/* Header */}
-                <header className="bg-white border-b border-slate-200 px-8 py-6 flex items-center justify-between z-10">
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">
-                            {activeTab.replace('-', ' ')}
-                        </h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                Live System Monitor • {new Date().toLocaleDateString()}
-                            </p>
+                <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-6 flex items-center justify-between z-10">
+                    <div className="flex items-center gap-4">
+                        <Link href={`/staff/dashboard?tab=${activeTab}&menu=open`} className="md:hidden -m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-slate-700">
+                            <span className="material-symbols-outlined text-3xl">menu</span>
+                        </Link>
+                        <div>
+                            <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">
+                                {activeTab.replace('-', ' ')}
+                            </h1>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:block">
+                                    Live System Monitor • {new Date().toLocaleDateString()}
+                                </p>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                        <form method="GET" className="relative group">
+                    <div className="flex items-center gap-3 md:gap-6">
+                        <form method="GET" className="relative group hidden lg:block">
                             <input type="hidden" name="tab" value={activeTab} />
                             <input
                                 type="text"
@@ -276,7 +301,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                             />
                             <Search className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
                         </form>
-                        
+
                         <button className="relative p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-sm">
                             <Bell size={22} />
                             {pendingTutors.length > 0 && (
@@ -293,34 +318,34 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                         <div className="space-y-10 animate-in fade-in duration-500">
                             {/* Stats Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <StatCard 
-                                    icon={<UserCheck size={24}/>} 
-                                    label="Verification Tasks" 
-                                    value={pendingTutors.length} 
-                                    trend="Action Required" 
+                                <StatCard
+                                    icon={<UserCheck size={24} />}
+                                    label="Verification Tasks"
+                                    value={pendingTutors.length}
+                                    trend="Action Required"
                                     urgent={pendingTutors.length > 0}
-                                    color="emerald" 
+                                    color="emerald"
                                 />
-                                <StatCard 
-                                    icon={<CalendarCheck size={24}/>} 
-                                    label="Active Bookings" 
-                                    value={activeBookings.length} 
+                                <StatCard
+                                    icon={<CalendarCheck size={24} />}
+                                    label="Active Bookings"
+                                    value={activeBookings.length}
                                     trend="Total platform volume"
-                                    color="emerald" 
+                                    color="emerald"
                                 />
-                                <StatCard 
-                                    icon={<Users size={24}/>} 
-                                    label="Verified Tutors" 
-                                    value={verifiedTutors.length} 
+                                <StatCard
+                                    icon={<Users size={24} />}
+                                    label="Verified Tutors"
+                                    value={verifiedTutors.length}
                                     trend="Total growth +12%"
-                                    color="emerald" 
+                                    color="emerald"
                                 />
-                                <StatCard 
-                                    icon={<Flag size={24}/>} 
-                                    label="Open Tickets" 
-                                    value={0} 
+                                <StatCard
+                                    icon={<Flag size={24} />}
+                                    label="Open Tickets"
+                                    value={0}
                                     trend="All clear today"
-                                    color="slate" 
+                                    color="slate"
                                 />
                             </div>
 
@@ -413,22 +438,22 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                     </td>
                                                     <td className="p-6">
                                                         <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                                                            <Clock size={14} className="text-slate-300"/>
+                                                            <Clock size={14} className="text-slate-300" />
                                                             {new Date(tutor.createdAt).toLocaleDateString()}
                                                         </div>
                                                     </td>
                                                     <td className="p-6 text-center">
-                                                        <Link 
+                                                        <Link
                                                             href={`/staff/dashboard?tab=verifications&viewFiles=${tutor.id}`}
                                                             className="inline-flex items-center gap-2 text-xs font-black text-emerald-600 bg-emerald-50 px-5 py-2.5 rounded-xl hover:bg-emerald-100 transition-all border border-emerald-100"
                                                         >
-                                                            <FileText size={14} /> 
+                                                            <FileText size={14} />
                                                             View Docs ({tutor.verificationDocs?.length || 0})
                                                         </Link>
                                                     </td>
                                                     <td className="p-6 pr-8 text-right">
                                                         <div className="flex justify-end gap-3">
-                                                            <Link 
+                                                            <Link
                                                                 href={`/staff/dashboard?tab=verifications&rejectId=${tutor.id}`}
                                                                 className="p-3 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
                                                                 title="Reject with Reason"
@@ -503,16 +528,15 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                         </div>
                                                     </td>
                                                     <td className="p-6">
-                                                        <span className={`text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest ${
-                                                            tutor.user.status === 'ACTIVE' 
-                                                            ? 'bg-emerald-100 text-emerald-700' 
-                                                            : 'bg-red-100 text-red-700'
-                                                        }`}>
+                                                        <span className={`text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest ${tutor.user.status === 'ACTIVE'
+                                                                ? 'bg-emerald-100 text-emerald-700'
+                                                                : 'bg-red-100 text-red-700'
+                                                            }`}>
                                                             {tutor.user.status}
                                                         </span>
                                                     </td>
                                                     <td className="p-6 pr-8 text-right">
-                                                        <Link 
+                                                        <Link
                                                             href={`/staff/dashboard?tab=tutors&manageId=${tutor.id}`}
                                                             className="inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md"
                                                         >
@@ -559,13 +583,13 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                     </td>
                                                     <td className="p-6">
                                                         <div className="text-xs font-bold text-slate-700 leading-relaxed">
-                                                            T: {booking.tutor.fullName}<br/>
+                                                            T: {booking.tutor.fullName}<br />
                                                             S: {booking.student.fullName}
                                                         </div>
                                                     </td>
                                                     <td className="p-6 text-center">
                                                         <div className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 bg-white border border-slate-100 px-4 py-2 rounded-xl">
-                                                            <Calendar size={14} className="text-emerald-500"/>
+                                                            <Calendar size={14} className="text-emerald-500" />
                                                             {new Date(booking.scheduledFor).toLocaleDateString()}
                                                         </div>
                                                     </td>
@@ -575,8 +599,8 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                                     <td className="p-6 pr-8 text-right">
                                                         <form action={handleUpdateBookingStatus} className="flex justify-end gap-2">
                                                             <input type="hidden" name="bookingId" value={booking.id} />
-                                                            <select 
-                                                                name="status" 
+                                                            <select
+                                                                name="status"
                                                                 className="text-[10px] font-black uppercase tracking-widest border border-slate-200 rounded-xl px-2 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500/20"
                                                                 defaultValue={booking.status}
                                                             >
@@ -612,7 +636,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">Credential Review</h2>
                                     <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mt-1">{tutorToViewFiles.fullName}</p>
                                 </div>
-                                <Link href={`/staff/dashboard?tab=${activeTab}`} className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm"><X size={24}/></Link>
+                                <Link href={`/staff/dashboard?tab=${activeTab}`} className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm"><X size={24} /></Link>
                             </div>
                             <div className="p-8 space-y-6 overflow-y-auto max-h-[60vh]">
                                 {tutorToViewFiles.verificationDocs.length === 0 ? (
@@ -625,18 +649,18 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                         {tutorToViewFiles.verificationDocs.map((doc: any) => (
                                             <div key={doc.id} className="p-6 border border-emerald-100 rounded-[2rem] bg-emerald-50/20 flex flex-col justify-between group hover:bg-emerald-50 transition-all">
                                                 <div className="flex items-center gap-4 mb-6">
-                                                    <div className="p-4 bg-white rounded-2xl text-emerald-600 shadow-sm"><FileText size={24}/></div>
+                                                    <div className="p-4 bg-white rounded-2xl text-emerald-600 shadow-sm"><FileText size={24} /></div>
                                                     <div>
                                                         <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">{doc.docType.replace('_', ' ')}</p>
                                                         <p className="text-sm font-bold text-slate-700 truncate w-40">{doc.fileName}</p>
                                                     </div>
                                                 </div>
-                                                <a 
-                                                    href={doc.fileUrl} 
-                                                    target="_blank" 
+                                                <a
+                                                    href={doc.fileUrl}
+                                                    target="_blank"
                                                     className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all"
                                                 >
-                                                    <Download size={14}/> Open Document
+                                                    <Download size={14} /> Open Document
                                                 </a>
                                             </div>
                                         ))}
@@ -668,10 +692,10 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                 <input type="hidden" name="action" value="REJECT" />
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason for Rejection</label>
-                                    <textarea 
-                                        name="reason" 
-                                        required 
-                                        placeholder="Explain what was wrong with the documents..." 
+                                    <textarea
+                                        name="reason"
+                                        required
+                                        placeholder="Explain what was wrong with the documents..."
                                         className="w-full h-40 p-5 bg-slate-50 border border-slate-200 rounded-3xl outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 text-sm font-medium transition-all"
                                     />
                                 </div>
@@ -685,6 +709,17 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                 )}
 
                 {/* 3. MANAGE TUTOR DRAWER (CONFIG DRAWER) */}
+                {invalidManageId && (
+                    <div className="absolute inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex justify-center items-center p-6 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[3rem] p-10 shadow-2xl text-center max-w-lg">
+                            <h2 className="text-2xl font-black text-slate-900 mb-4">Tutor not found</h2>
+                            <p className="text-sm text-slate-500 mb-6">The requested tutor could not be loaded. Please try again or refresh the page.</p>
+                            <Link href="/staff/dashboard?tab=tutors" className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-emerald-600 text-white font-black uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all">
+                                Return to Tutor List
+                            </Link>
+                        </div>
+                    </div>
+                )}
                 {tutorToManage && (
                     <div className="absolute inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex justify-end animate-in fade-in duration-300">
                         <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-500 border-l border-slate-100">
@@ -693,19 +728,19 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                     <h2 className="text-3xl font-black text-slate-900 tracking-tighter truncate w-64">{tutorToManage.fullName}</h2>
                                     <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mt-1">Verified Expert Management</p>
                                 </div>
-                                <Link href="/staff/dashboard?tab=tutors" className="p-4 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-emerald-600 transition-all shadow-sm"><X/></Link>
+                                <Link href="/staff/dashboard?tab=tutors" className="p-4 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-emerald-600 transition-all shadow-sm"><X /></Link>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-10 space-y-12">
                                 {/* Account Control Section */}
                                 <section className="space-y-6">
                                     <div className="flex items-center gap-3">
-                                        <Settings className="text-slate-400" size={18}/>
+                                        <Settings className="text-slate-400" size={18} />
                                         <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Account Visibility & Security</h3>
                                     </div>
                                     <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-6 shadow-inner">
                                         <div className="flex items-center justify-between">
-                                            <span className="font-bold text-sm text-slate-600">Current Login Status:</span>
+                                            <span className="font-bold text-sm text-slate-600">Tutor Status:</span>
                                             <span className={`text-[10px] font-black px-3 py-1 rounded-lg uppercase ${tutorToManage.user.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                                 {tutorToManage.user.status}
                                             </span>
@@ -713,11 +748,10 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                         <form action={handleToggleAccountStatus}>
                                             <input type="hidden" name="userId" value={tutorToManage.user.id} />
                                             <input type="hidden" name="currentStatus" value={tutorToManage.user.status} />
-                                            <button className={`w-full py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
-                                                tutorToManage.user.status === 'ACTIVE' 
-                                                ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-                                                : 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
-                                            }`}>
+                                            <button className={`w-full py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${tutorToManage.user.status === 'ACTIVE'
+                                                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                                    : 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
+                                                }`}>
                                                 {tutorToManage.user.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
                                             </button>
                                         </form>
@@ -727,15 +761,15 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                 {/* Subject Management Section */}
                                 <section className="space-y-6">
                                     <div className="flex items-center gap-3">
-                                        <BookOpen className="text-slate-400" size={18}/>
+                                        <BookOpen className="text-slate-400" size={18} />
                                         <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Authorized Teaching Subjects</h3>
                                     </div>
-                                    
+
                                     <div className="flex flex-wrap gap-2">
                                         {tutorToManage.subjects.map((s: any) => (
                                             <div key={s.id} className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-xs font-bold border border-emerald-100 flex items-center gap-2">
                                                 {s.subject.name}
-                                                <button className="hover:text-red-500 transition-colors"><X size={12}/></button>
+                                                <button className="hover:text-red-500 transition-colors"><X size={12} /></button>
                                             </div>
                                         ))}
                                     </div>
@@ -758,13 +792,13 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                             <div className="flex-1 h-[1px] bg-slate-100"></div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <input 
-                                                name="customSubject" 
-                                                placeholder="Type custom subject name..." 
+                                            <input
+                                                name="customSubject"
+                                                placeholder="Type custom subject name..."
                                                 className="flex-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                             <button type="submit" className="bg-slate-900 text-white px-6 rounded-2xl shadow-xl hover:bg-emerald-600 transition-all">
-                                                <Plus size={20}/>
+                                                <Plus size={20} />
                                             </button>
                                         </div>
                                     </form>
@@ -772,13 +806,14 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
 
                                 {/* Danger Zone Section */}
                                 <section className="pt-10 border-t border-slate-100">
-                                    <form action={handleDeleteTutor} onSubmit={(e) => {
-                                        if(!confirm("DANGER: This will permanently erase this tutor. Continue?")) e.preventDefault();
-                                    }}>
+                                    <form action={handleDeleteTutor}>
                                         <input type="hidden" name="tutorId" value={tutorToManage.id} />
-                                        <button className="w-full py-4 text-xs font-black uppercase tracking-widest text-slate-300 hover:text-red-600 transition-colors flex items-center justify-center gap-2">
-                                            <Trash2 size={16}/> Permanent Deletion
-                                        </button>
+                                        <ConfirmActionButton
+                                            confirmMessage="DANGER: This will permanently erase this tutor. Continue?"
+                                            className="w-full py-4 text-xs font-black uppercase tracking-widest text-slate-300 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <Trash2 size={16} /> Permanent Deletion
+                                        </ConfirmActionButton>
                                     </form>
                                 </section>
                             </div>
@@ -797,11 +832,10 @@ function SidebarItem({ icon, label, tabName, active, badge }: { icon: React.Reac
     return (
         <Link
             href={`/staff/dashboard?tab=${tabName}`}
-            className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all duration-300 group ${
-                active 
-                ? 'bg-emerald-50 text-emerald-700 font-black shadow-sm' 
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-bold'
-            }`}
+            className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all duration-300 group ${active
+                    ? 'bg-emerald-50 text-emerald-700 font-black shadow-sm'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-bold'
+                }`}
         >
             <div className="flex items-center gap-4 text-sm tracking-tight">
                 <span className={`${active ? 'text-emerald-600' : 'text-slate-400 group-hover:text-emerald-500'} transition-colors`}>{icon}</span>
