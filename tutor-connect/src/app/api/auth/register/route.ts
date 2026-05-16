@@ -4,6 +4,9 @@ import { hashPassword } from '@/lib/utils';
 import { registerSchema } from '@/lib/validations';
 import { UserRole } from '@prisma/client';
 
+import { generateVerificationToken } from '@/lib/tokens';
+import { sendVerificationEmail } from '@/lib/mail';
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -46,7 +49,7 @@ export async function POST(req: Request) {
                     email,
                     passwordHash: await hashPassword(password),
                     role: role as UserRole,
-                    status: role === 'TUTOR' ? 'PENDING' : 'ACTIVE', // Tutors need approval
+                    status: 'PENDING', // All users are pending until email verified
                 },
             });
 
@@ -88,8 +91,12 @@ export async function POST(req: Request) {
             return user;
         });
 
+        // Generate OTP and send email
+        const token = await generateVerificationToken(email, 'EMAIL_VERIFICATION');
+        await sendVerificationEmail(email, token.token);
+
         return NextResponse.json(
-            { message: 'User created successfully', userId: newUser.id },
+            { message: 'User created successfully. Verification email sent.', userId: newUser.id, requireOtp: true, email },
             { status: 201 }
         );
     } catch (error: any) {

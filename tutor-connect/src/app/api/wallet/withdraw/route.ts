@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
+import { sendTransactionEmail } from '@/lib/mail';
 import crypto from 'crypto';
 
 export async function POST(req: Request) {
@@ -84,6 +85,23 @@ export async function POST(req: Request) {
                         paymentMetadata: { status: 'COMPLETED', chapaRef: chapaData.data?.reference, bankCode, accountNumber }
                     }
                 });
+
+                // Fetch user details for email
+                const user = await prisma.user.findUnique({
+                    where: { id: session.user.id },
+                    include: { tutorProfile: true, studentProfile: true }
+                });
+
+                if (user && user.email) {
+                    const userName = user.tutorProfile?.fullName || user.studentProfile?.fullName || 'User';
+                    await sendTransactionEmail(
+                        user.email,
+                        userName,
+                        'WITHDRAWAL',
+                        amount,
+                        Number(updatedWallet.balance)
+                    );
+                }
 
                 return NextResponse.json({ success: true, message: chapaData.message });
             } else {

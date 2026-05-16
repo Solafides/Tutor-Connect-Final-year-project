@@ -50,8 +50,12 @@ export default function RegisterPage() {
                 throw new Error(result.message || 'Registration failed');
             }
 
-            // Redirect to login on success
-            router.push('/login?registered=true');
+            if (result.requireOtp) {
+                router.push(`/verify-email?email=${encodeURIComponent(payload.email as string)}`);
+            } else {
+                // Fallback redirect
+                router.push('/login?registered=true');
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Something went wrong');
         } finally {
