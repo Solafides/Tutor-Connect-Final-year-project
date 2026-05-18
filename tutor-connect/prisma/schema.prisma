@@ -179,26 +179,35 @@ model Transaction {
 }
 
 model Booking {
-  id                 String         @id @default(cuid())
-  studentId          String         @map("student_id")
-  tutorId            String         @map("tutor_id")
-  subjectName        String         @map("subject_name")
-  scheduledFor       DateTime       @map("scheduled_for")
+  id                 String              @id @default(cuid())
+  studentId          String              @map("student_id")
+  tutorId            String              @map("tutor_id")
+  subjectName        String              @map("subject_name")
+  scheduledFor       DateTime            @map("scheduled_for")
+  startDate          DateTime?           @map("start_date")
+  endDate            DateTime?           @map("end_date")
+  packageDuration    String?             @map("package_duration")
+  daysPerWeek        Int?                @map("days_per_week")
+  scheduleDetails    Json?               @map("schedule_details")
   duration           Int
-  status             BookingStatus  @default(PENDING)
-  totalAmount        Decimal        @map("total_amount") @db.Decimal(10, 2)
-  platformFee        Decimal        @map("platform_fee") @db.Decimal(10, 2)
-  tutorEarning       Decimal        @map("tutor_earning") @db.Decimal(10, 2)
-  escrowStatus       EscrowStatus   @default(HELD) @map("escrow_status")
-  completedByTutor   Boolean?       @default(false) @map("completed_by_tutor")
-  completedByStudent Boolean?       @default(false) @map("completed_by_student")
-  completedAt        DateTime?      @map("completed_at")
+  totalSessions      Int?                @map("total_sessions")
+  totalHours         Decimal?            @map("total_hours") @db.Decimal(10, 2)
+  status             BookingStatus       @default(PENDING)
+  totalAmount        Decimal             @map("total_amount") @db.Decimal(10, 2)
+  platformFee        Decimal             @map("platform_fee") @db.Decimal(10, 2)
+  tutorEarning       Decimal             @map("tutor_earning") @db.Decimal(10, 2)
+  escrowStatus       EscrowStatus        @default(HELD) @map("escrow_status")
+  completedByTutor   Boolean?            @default(false) @map("completed_by_tutor")
+  completedByStudent Boolean?            @default(false) @map("completed_by_student")
+  completedAt        DateTime?           @map("completed_at")
   notes              String?
-  createdAt          DateTime       @default(now()) @map("created_at")
-  updatedAt          DateTime       @updatedAt @map("updated_at")
-  isPaid             Boolean        @default(false) @map("is_paid")
-  student            StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  tutor              TutorProfile   @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  isPaid             Boolean             @default(false) @map("is_paid")
+  student            StudentProfile      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tutor              TutorProfile        @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  recurringSchedule  RecurringSchedule?
+  sessions           SessionInstance[]
   classroom          Classroom?
   complaint          Complaint?
   review             Review?
@@ -208,6 +217,41 @@ model Booking {
   @@index([status])
   @@index([scheduledFor])
   @@map("bookings")
+}
+
+model RecurringSchedule {
+  id           String          @id @default(cuid())
+  bookingId    String          @unique @map("booking_id")
+  startDate    DateTime        @map("start_date")
+  endDate      DateTime        @map("end_date")
+  selectedDays Json            @map("selected_days")
+  startTime    String          @map("start_time")
+  endTime      String          @map("end_time")
+  timezone     String          @default("UTC")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  booking      Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  sessions     SessionInstance[]
+
+  @@map("recurring_schedules")
+}
+
+model SessionInstance {
+  id            String         @id @default(cuid())
+  bookingId     String         @map("booking_id")
+  scheduleId    String?        @map("schedule_id")
+  sessionDate   DateTime       @map("session_date")
+  startTime     String         @map("start_time")
+  endTime       String         @map("end_time")
+  durationHours Decimal        @map("duration_hours") @db.Decimal(5, 2)
+  status        SessionStatus  @default(SCHEDULED)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  booking       Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  schedule      RecurringSchedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([scheduleId])
+  @@index([sessionDate])
+  @@map("session_instances")
 }
 
 model Classroom {
@@ -353,6 +397,13 @@ enum ComplaintStatus {
   IN_REVIEW
   RESOLVED
   CLOSED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  MISSED
 }
 
 enum DayOfWeek {

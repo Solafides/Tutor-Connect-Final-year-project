@@ -59,11 +59,12 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     const manageTutorId = normalizeParam(params?.manageId);
     const viewFilesId = normalizeParam(params?.viewFiles);
     const rejectTutorId = normalizeParam(params?.rejectId);
+    const viewComplaintId = normalizeParam(params?.viewComplaint);
     const isMenuOpen = normalizeParam(params?.menu) === 'open';
 
     // 3. Comprehensive Database Fetch
     // We fetch everything needed for all tabs to ensure no "null" errors
-    const [tutors, bookings, allSubjects, stats] = await Promise.all([
+    const [tutors, bookings, allSubjects, stats, complaints] = await Promise.all([
         prisma.tutorProfile.findMany({
             orderBy: { createdAt: 'desc' },
             include: {
@@ -87,6 +88,17 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
         prisma.booking.aggregate({
             _sum: { totalAmount: true },
             _count: { id: true }
+        }),
+        prisma.complaint.findMany({
+            orderBy: { createdAt: 'desc' },
+            include: {
+                booking: {
+                    include: {
+                        student: true,
+                        tutor: true
+                    }
+                }
+            }
         })
     ]);
 
@@ -116,6 +128,13 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
     const tutorToManage = manageTutorId ? tutors.find(t => t.id === manageTutorId) : null;
     const tutorToViewFiles = viewFilesId ? tutors.find(t => t.id === viewFilesId) : null;
     const tutorToReject = rejectTutorId ? tutors.find(t => t.id === rejectTutorId) : null;
+    const invalidManageId = manageTutorId ? !tutors.some(t => t.id === manageTutorId) : false;
+    const complaintToView = viewComplaintId ? complaints.find(c => c.id === viewComplaintId) : null;
+    const complaintResolvedAt = complaintToView?.resolvedAt
+        ? (typeof complaintToView.resolvedAt === 'string'
+            ? new Date(complaintToView.resolvedAt).toLocaleString()
+            : complaintToView.resolvedAt.toLocaleString())
+        : 'Unknown';
 
     // ==========================================
     // 5. SERVER ACTIONS (Staff Operations)
@@ -1031,7 +1050,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                         <div className="p-6 bg-slate-100 rounded-[2rem] border border-slate-200">
                                             <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Resolution Notes</h4>
                                             <p className="text-sm font-bold text-slate-800 mt-2">{complaintToView.resolution}</p>
-                                            <p className="text-[10px] font-bold text-slate-500 mt-2">Resolved by: {complaintToView.resolvedBy} at {new Date(complaintToView.resolvedAt).toLocaleString()}</p>
+                                            <p className="text-[10px] font-bold text-slate-500 mt-2">Resolved by: {complaintToView.resolvedBy} at {complaintResolvedAt}</p>
                                         </div>
                                     )}
                                 </div>

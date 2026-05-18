@@ -5,6 +5,16 @@ import { prisma } from '@/lib/db';
 import { tutorProfileSchema } from '@/lib/validations';
 import { revalidatePath } from 'next/cache';
 
+function parseJsonValue<T>(value: FormDataEntryValue | null, fallback: T): T {
+    if (!value) return fallback;
+    if (typeof value !== 'string') return fallback;
+    try {
+        return JSON.parse(value) as T;
+    } catch {
+        return fallback;
+    }
+}
+
 export async function updateTutorProfile(formData: FormData) {
     const session = await auth();
 
@@ -62,6 +72,21 @@ export async function updateTutorProfile(formData: FormData) {
                     tutorId: tutorProfile.id,
                     subjectId,
                 }))
+            });
+        }
+
+        // 4. Update availability schedule
+        const availabilities = parseJsonValue<Array<{ dayOfWeek: string; startTime: string; endTime: string }>>(formData.get('availabilities'), []);
+        await tx.availability.deleteMany({ where: { tutorId: tutorProfile.id } });
+        if (availabilities.length > 0) {
+            await tx.availability.createMany({
+                data: availabilities.map((availability) => ({
+                    tutorId: tutorProfile.id,
+                    dayOfWeek: availability.dayOfWeek,
+                    startTime: availability.startTime,
+                    endTime: availability.endTime,
+                    isActive: true,
+                })),
             });
         }
     });

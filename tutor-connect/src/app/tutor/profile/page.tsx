@@ -21,6 +21,7 @@ export default async function TutorProfilePage() {
             where: { userId: session.user.id },
             include: {
                 subjects: true,
+                availability: true,
             },
         }),
         prisma.subject.findMany({
