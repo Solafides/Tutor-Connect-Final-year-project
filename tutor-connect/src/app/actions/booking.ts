@@ -37,16 +37,7 @@ export async function createBooking(formData: FormData) {
         throw new Error('Unauthorized');
     }
 
-<<<<<<< HEAD
-    const data = {
-        tutorId: formData.get('tutorId') as string,
-        subjectName: formData.get('subjectName') as string,
-        scheduledFor: formData.get('scheduledFor') as string,
-        endDate: formData.get('endDate') as string || undefined,
-        schedule: formData.get('schedule') as string || undefined,
-        duration: parseInt(formData.get('duration') as string),
-        notes: formData.get('notes') as string || undefined,
-=======
+
     const tutorId = formData.get('tutorId') as string;
     const subjectName = formData.get('subjectName') as string;
     const startDate = formData.get('startDate') as string;
@@ -64,7 +55,7 @@ export async function createBooking(formData: FormData) {
         startTime,
         endTime,
         timezone,
->>>>>>> e4f534e5f9af3f18933c5b4692e2670445658ec5
+
     };
 
     const firstSessionDates = buildSessionDates(startDate, endDate, selectedDays);
@@ -72,9 +63,7 @@ export async function createBooking(formData: FormData) {
         throw new Error('Please select at least one study day within the selected date range.');
     }
 
-<<<<<<< HEAD
-    const { tutorId, subjectName, scheduledFor, endDate, schedule, duration, notes } = result.data;
-=======
+
     if (!isValidTimeRange(startTime, endTime)) {
         throw new Error('Session end time must be after the start time.');
     }
@@ -112,7 +101,7 @@ export async function createBooking(formData: FormData) {
     if (!validation.success) {
         throw new Error('Invalid booking data');
     }
->>>>>>> e4f534e5f9af3f18933c5b4692e2670445658ec5
+
 
     const tutor = await prisma.tutorProfile.findUnique({
         where: { id: tutorId }
@@ -227,20 +216,14 @@ export async function createBooking(formData: FormData) {
             tutorId,
             studentId,
             subjectName,
-<<<<<<< HEAD
-            scheduledFor: new Date(scheduledFor),
-            endDate: endDate ? new Date(endDate) : undefined,
-            schedule: schedule ? JSON.parse(schedule) : undefined,
-            duration,
-            notes,
-=======
+
             scheduledFor: buildISODateTime(sessionDates[0], startTime),
             startDate: new Date(startDate),
             endDate: new Date(endDate),
             packageDuration,
             daysPerWeek,
             duration: hoursPerSession * 60,
->>>>>>> e4f534e5f9af3f18933c5b4692e2670445658ec5
+
             totalAmount,
             totalHours,
             totalSessions,
