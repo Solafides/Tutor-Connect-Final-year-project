@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
         where: {
             studentId: studentProfile.id,
             status: 'ACCEPTED',
-            isPaid: true,
         },
         orderBy: { scheduledFor: 'desc' },
         include: {
@@ -38,56 +37,42 @@ export async function GET(request: NextRequest) {
         },
     });
 
-    const bookingClasses = bookings.map((booking) => ({
-        id: booking.id,
-        bookingId: booking.id,
-        title: booking.subjectName || `Classroom ${booking.id.slice(0, 6)}`,
-        subject: booking.subjectName || 'Tutoring Session',
-        tutorName: booking.tutor?.fullName || booking.tutor?.user?.email || 'Verified Tutor',
-        lastActive: booking.scheduledFor ? new Date(booking.scheduledFor).toLocaleString() : 'Just now',
-        progress: 0,
-        meetingLink: booking.classroom?.meetingLink || null,
-        resources: (booking.classroom?.resources || []).map((resource) => ({
-            id: resource.id,
-            title: resource.title,
-            description: resource.description,
-            resourceType: resource.resourceType,
-            fileUrl: resource.fileUrl,
-            content: resource.content,
-            uploadedAt: resource.uploadedAt.toISOString(),
-        })),
-    }));
-
-    // Fetch tutor-created classrooms where student is enrolled
-    const enrollments = await prisma.studentEnrollment.findMany({
-        where: { studentId: studentProfile.id },
-        include: {
-            classroom: {
-                include: {
-                    resources: true,
-                    tutor: {
-                        include: {
-                            user: true,
-                        },
-                    },
+    const classes = await Promise.all(bookings.map(async (booking) => {
+        let classroom = booking.classroom;
+        
+        // Auto-create classroom if it doesn't exist
+        if (!classroom) {
+            classroom = await prisma.classroom.create({
+                data: {
+                    bookingId: booking.id,
+                    tutorId: booking.tutorId,
+                    title: `${booking.subjectName} with ${booking.tutor?.fullName}`,
+                    subject: booking.subjectName,
                 },
-            },
-        },
-        orderBy: { enrolledAt: 'desc' },
-    });
-
-    const enrolledClasses = enrollments.map((enrollment) => {
-        const classroom = enrollment.classroom;
+                include: {
+                    resources: true
+                }
+            });
+            
+            // Auto-enroll the student
+            await prisma.studentEnrollment.create({
+                data: {
+                    classroomId: classroom.id,
+                    studentId: booking.studentId,
+                }
+            });
+        }
+        
         return {
             id: classroom.id,
-            bookingId: null,
-            title: classroom.title || `Classroom ${classroom.id.slice(0, 6)}`,
-            subject: classroom.subject || 'Tutoring Session',
-            tutorName: classroom.tutor?.fullName || classroom.tutor?.user?.email || 'Verified Tutor',
+            bookingId: booking.id,
+            title: `Class with ${booking.tutor?.fullName || 'Tutor'}`,
+            tutorName: booking.tutor?.fullName || 'Tutor',
+            subject: booking.subjectName || 'Tutoring Session',
             lastActive: classroom.createdAt.toLocaleString(),
             progress: 0,
             meetingLink: classroom.meetingLink || null,
-            resources: classroom.resources.map((resource) => ({
+            resources: (classroom.resources || []).map((resource) => ({
                 id: resource.id,
                 title: resource.title,
                 description: resource.description,
@@ -97,9 +82,7 @@ export async function GET(request: NextRequest) {
                 uploadedAt: resource.uploadedAt.toISOString(),
             })),
         };
-    });
-
-    const classes = [...bookingClasses, ...enrolledClasses];
+    }));
 
     return NextResponse.json({ classes });
 }

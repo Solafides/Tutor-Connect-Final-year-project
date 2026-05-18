@@ -51,11 +51,8 @@ export default function StudentClassroomPage() {
     const [view, setView] = useState<ViewMode>('LIST');
     const [activeTab, setActiveTab] = useState<TabMode>('lessons');
     const [isMeetingActive, setIsMeetingActive] = useState<boolean>(false);
-    const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
-    const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
-    const [enrollError, setEnrollError] = useState<string | null>(null);
 
     const searchParams = useSearchParams();
     const meetingLinkParam = searchParams?.get('meetingLink');
@@ -111,49 +108,7 @@ export default function StudentClassroomPage() {
         setView('CLASSROOM');
     };
 
-    const handleJoinClass = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setIsEnrolling(true);
-        setEnrollError(null);
 
-        try {
-            const formData = new FormData(e.currentTarget);
-            const classroomId = (formData.get('classId') as string).trim();
-
-            if (!classroomId) {
-                setEnrollError('Please enter a classroom ID');
-                setIsEnrolling(false);
-                return;
-            }
-
-            const response = await fetch('/api/student/classrooms/enroll', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ classroomId }),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                setEnrollError(result.error || 'Failed to enroll in classroom');
-                setIsEnrolling(false);
-                return;
-            }
-
-            // Add the new classroom to the list
-            setEnrolledClasses([result.classroom, ...enrolledClasses]);
-            setShowJoinModal(false);
-            setEnrollError(null);
-            (e.target as HTMLFormElement).reset();
-        } catch (error: any) {
-            setEnrollError(error?.message || 'An error occurred while enrolling');
-        } finally {
-            setIsEnrolling(false);
-        }
-    };
 
     const lessonResources = selectedClass?.resources.filter((resource) => {
         const type = resource.resourceType?.toLowerCase() || '';
@@ -206,21 +161,15 @@ export default function StudentClassroomPage() {
                     <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full h-full overflow-y-auto">
                         <div className="mb-8 flex justify-between items-end">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Student Classroom</h2>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">My Tutors</h2>
                                 <p className="text-slate-500 font-medium">
                                     {isLoading
-                                        ? 'Loading your enrolled classes...'
+                                        ? 'Loading your tutoring sessions...'
                                         : enrolledClasses.length > 0
-                                            ? `Continue your learning in ${enrolledClasses.length} active classes.`
-                                            : "You haven't joined any classes yet. Join one using a Class ID."}
+                                            ? `Continue your learning in ${enrolledClasses.length} active sessions.`
+                                            : "You haven't booked any tutors yet."}
                                 </p>
                             </div>
-                            <button
-                                onClick={() => setShowJoinModal(true)}
-                                className={`flex items-center gap-2 ${brandGreen} ${brandGreenHover} text-white px-5 py-2.5 rounded-2xl font-bold transition-all text-sm shadow-lg shadow-emerald-100 active:scale-95`}
-                            >
-                                <PlusCircle size={18} /> Join Class
-                            </button>
                         </div>
 
                         {fetchError && (
@@ -263,15 +212,6 @@ export default function StudentClassroomPage() {
                                 </div>
                             ))}
 
-                            <button
-                                onClick={() => setShowJoinModal(true)}
-                                className="bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 p-7 flex flex-col items-center justify-center gap-4 text-slate-400 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-600 transition-all group"
-                            >
-                                <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-white transition-colors">
-                                    <Hash size={32} />
-                                </div>
-                                <span className="font-black uppercase text-xs tracking-widest text-center">Enroll via Class ID</span>
-                            </button>
                         </div>
                     </div>
                 )}
@@ -401,32 +341,7 @@ export default function StudentClassroomPage() {
                     </div>
                 )}
 
-                {/* --- JOIN CLASSROOM MODAL --- */}
-                {showJoinModal && (
-                    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
-                        <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-10 animate-in zoom-in-95 duration-200">
-                            <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Join Classroom</h2>
-                                <button onClick={() => { setShowJoinModal(false); setEnrollError(null); }} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
-                            </div>
-                            {enrollError && (
-                                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 text-sm text-red-700 font-semibold">
-                                    {enrollError}
-                                </div>
-                            )}
-                            <form onSubmit={handleJoinClass} className="space-y-6">
-                                <div>
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Class ID / Invite Code</label>
-                                    <input required name="classId" disabled={isEnrolling} className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4.5 text-slate-800 font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-emerald-500 transition-all uppercase tracking-widest disabled:opacity-50" placeholder="E.G. CLS_123" />
-                                    <p className="text-[10px] text-slate-400 mt-3 ml-1">Enter the unique code provided by your tutor.</p>
-                                </div>
-                                <button type="submit" disabled={isEnrolling} className={`w-full ${brandGreen} text-white py-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-100 active:scale-95 mt-4 disabled:opacity-50 disabled:cursor-not-allowed`}>
-                                    {isEnrolling ? 'Enrolling...' : 'Join Now'}
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                )}
+
             </main>
         </div>
     );

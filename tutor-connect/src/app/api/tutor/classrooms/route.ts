@@ -16,28 +16,59 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ classes: [] });
     }
 
-    const classrooms = await prisma.classroom.findMany({
+    // Find all accepted bookings for this tutor
+    const bookings = await prisma.booking.findMany({
         where: {
-            OR: [
-                { tutorId: tutor.id },
-                { booking: { tutorId: tutor.id } },
-            ],
+            tutorId: tutor.id,
+            status: 'ACCEPTED',
         },
         include: {
-            booking: true,
-            enrollments: true,
+            student: true,
+            classroom: {
+                include: {
+                    enrollments: true
+                }
+            }
         },
         orderBy: { createdAt: 'desc' },
     });
 
-    const classes = classrooms.map((cls) => ({
-        id: cls.id,
-        title: cls.title || cls.booking?.subjectName || 'Untitled Classroom',
-        subject: cls.subject || cls.booking?.subjectName || 'General',
-        students: cls.enrollments?.length || 0,
-        lastActive: cls.createdAt.toLocaleString(),
-        progress: 0,
-        bookingId: cls.bookingId || null,
+    const classes = await Promise.all(bookings.map(async (booking) => {
+        let classroom = booking.classroom;
+        
+        // Auto-create classroom if it doesn't exist
+        if (!classroom) {
+            classroom = await prisma.classroom.create({
+                data: {
+                    bookingId: booking.id,
+                    tutorId: tutor.id,
+                    title: `${booking.subjectName} with ${booking.student.fullName}`,
+                    subject: booking.subjectName,
+                },
+                include: {
+                    enrollments: true
+                }
+            });
+            
+            // Auto-enroll the student
+            await prisma.studentEnrollment.create({
+                data: {
+                    classroomId: classroom.id,
+                    studentId: booking.studentId,
+                }
+            });
+        }
+        
+        return {
+            id: classroom.id,
+            bookingId: booking.id,
+            title: `Class with ${booking.student.fullName}`,
+            studentName: booking.student.fullName,
+            subject: booking.subjectName,
+            students: 1, // It's a 1-on-1 class
+            lastActive: classroom.createdAt.toLocaleString(),
+            progress: 0,
+        };
     }));
 
     return NextResponse.json({ classes });
@@ -132,35 +163,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-    const session = await auth();
-    if (!session || session.user.role !== 'TUTOR') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const tutor = await prisma.tutorProfile.findUnique({
-        where: { userId: session.user.id },
-    });
-
-    if (!tutor) {
-        return NextResponse.json({ error: 'Tutor profile not found' }, { status: 404 });
-    }
-
-    const classroomId = request.nextUrl.searchParams.get('id');
-    if (!classroomId) {
-        return NextResponse.json({ error: 'Classroom ID is required' }, { status: 400 });
-    }
-
-    const classroom = await prisma.classroom.findUnique({
-        where: { id: classroomId },
-    });
-
-    if (!classroom || classroom.tutorId !== tutor.id) {
-        return NextResponse.json({ error: 'Classroom not found or access denied' }, { status: 404 });
-    }
-
-    await prisma.classroom.delete({
-        where: { id: classroomId },
-    });
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ error: 'Classrooms cannot be manually deleted in 1-on-1 mode.' }, { status: 400 });
 }

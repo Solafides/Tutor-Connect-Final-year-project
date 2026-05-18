@@ -22,7 +22,8 @@ import {
     ChevronDown,
     ChevronUp,
     Paperclip,
-    Calendar
+    Calendar,
+    User
 } from 'lucide-react';
 
 type ViewMode = 'MANAGEMENT' | 'CLASSROOM';
@@ -65,7 +66,6 @@ export default function ClassroomClient() {
     const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
 
     // Modals state
-    const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
     const [showChapterModal, setShowChapterModal] = useState<boolean>(false);
     const [showMaterialModal, setShowMaterialModal] = useState<boolean>(false);
     const [showAssignmentModal, setShowAssignmentModal] = useState<boolean>(false);
@@ -137,11 +137,6 @@ export default function ClassroomClient() {
                 setMyClasses(dbClasses);
             } catch (error) {
                 console.error('Unable to load tutor classroom list:', error);
-                const savedData = localStorage.getItem('tutor_classroom_data');
-                if (savedData) {
-                    const parsed = JSON.parse(savedData);
-                    setMyClasses(parsed.classes || []);
-                }
             } finally {
                 setIsLoadingClasses(false);
             }
@@ -266,50 +261,7 @@ export default function ClassroomClient() {
         }
     };
 
-    const handleCreateClass = (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        const newClass = {
-            id: `CLS_${Math.floor(Math.random() * 10000)}`,
-            title: formData.get('title') as string,
-            subject: formData.get('subject') as string,
-            students: 0,
-            lastActive: "Just now",
-            progress: 0,
-        };
-        setMyClasses([newClass, ...myClasses]);
-        setShowCreateModal(false);
-    };
 
-    const handleDeleteClass = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!confirm("Are you sure you want to permanently delete this classroom? All materials and assignments will be lost.")) {
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/tutor/classrooms?id=${encodeURIComponent(id)}`, {
-                method: 'DELETE',
-                credentials: 'same-origin',
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete classroom');
-            }
-
-            setMyClasses(myClasses.filter(c => c.id !== id));
-            setChapters(chapters.filter(ch => ch.classId !== id));
-            setAssignments(assignments.filter(a => a.classId !== id));
-
-            if (selectedClass?.id === id) {
-                setSelectedClass(null);
-                setView('MANAGEMENT');
-            }
-        } catch (error) {
-            console.error('Unable to delete classroom:', error);
-            alert('Unable to delete classroom. Please try again.');
-        }
-    };
 
     const toggleMeeting = () => setIsMeetingActive(!isMeetingActive);
 
@@ -478,25 +430,16 @@ export default function ClassroomClient() {
                     <div className="max-w-7xl mx-auto w-full h-full overflow-y-auto">
                         <div className="mb-8 flex justify-between items-end">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Tutor Dashboard</h2>
-                                <p className="text-slate-500 font-medium">Manage your active classrooms.</p>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">My Students</h2>
+                                <p className="text-slate-500 font-medium">Manage your 1-on-1 tutoring sessions.</p>
                             </div>
-                            <button
-                                onClick={() => setShowCreateModal(true)}
-                                className={`flex items-center gap-2 ${brandGreen} ${brandGreenHover} text-white px-5 py-2.5 rounded-2xl font-bold transition-all text-sm shadow-lg shadow-emerald-100 active:scale-95`}
-                            >
-                                <PlusCircle size={18} /> New Class
-                            </button>
                         </div>
 
                         {myClasses.length === 0 ? (
                             <div className="bg-white border border-slate-200 border-dashed rounded-[3rem] p-16 flex flex-col items-center justify-center text-center">
-                                <BookOpen size={64} className="text-slate-200 mb-6" />
-                                <h3 className="text-2xl font-bold text-slate-700">No classes yet</h3>
-                                <p className="text-slate-500 mt-2 max-w-md">Create your first class to start adding chapters, assignments, and inviting students.</p>
-                                <button onClick={() => setShowCreateModal(true)} className={`mt-8 px-8 py-3 ${brandGreen} text-white font-bold rounded-2xl hover:bg-emerald-600 transition-colors`}>
-                                    Create My First Class
-                                </button>
+                                <Users size={64} className="text-slate-200 mb-6" />
+                                <h3 className="text-2xl font-bold text-slate-700">No active students</h3>
+                                <p className="text-slate-500 mt-2 max-w-md">Once a student books a session with you and you accept it, they will appear here.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -504,15 +447,8 @@ export default function ClassroomClient() {
                                     <div key={cls.id} className="bg-white rounded-[2.5rem] border border-slate-200 p-7 hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden cursor-pointer" onClick={() => handleEnterClass(cls)}>
                                         <div className="flex justify-between items-start mb-6">
                                             <div className={`${brandGreenLight} ${brandGreenText} p-4 rounded-3xl group-hover:${brandGreen} group-hover:text-white transition-all duration-300`}>
-                                                <BookOpen size={28} />
+                                                <User size={28} />
                                             </div>
-                                            <button
-                                                onClick={(e) => handleDeleteClass(cls.id, e)}
-                                                className="text-slate-300 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"
-                                                title="Delete Class"
-                                            >
-                                                <Trash2 size={20} />
-                                            </button>
                                         </div>
 
                                         <div className="mb-6">
@@ -520,7 +456,7 @@ export default function ClassroomClient() {
                                                 {cls.subject}
                                             </span>
                                             <h3 className={`text-xl font-bold text-slate-900 group-hover:${brandGreenText} transition-colors leading-tight`}>
-                                                {cls.title}
+                                                {cls.studentName || cls.title}
                                             </h3>
                                         </div>
 
@@ -762,35 +698,7 @@ export default function ClassroomClient() {
 
                 {/* --- MODALS --- */}
 
-                {/* 1. Create Class Modal */}
-                {showCreateModal && (
-                    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
-                        <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-10">
-                            <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight">New Classroom</h2>
-                                <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
-                            </div>
-                            <form onSubmit={handleCreateClass} className="space-y-6">
-                                <div>
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Class Title</label>
-                                    <input required name="title" className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4.5 text-slate-800 font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-emerald-500 transition-all" placeholder="e.g. Geometry Intensive" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2.5 ml-1">Academic Subject</label>
-                                    <select name="subject" className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4.5 text-slate-800 font-bold focus:ring-2 focus:ring-emerald-500 transition-all appearance-none cursor-pointer">
-                                        <option>Mathematics</option>
-                                        <option>Physics</option>
-                                        <option>Chemistry</option>
-                                        <option>English</option>
-                                    </select>
-                                </div>
-                                <button type="submit" className={`w-full ${brandGreen} text-white py-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-100 active:scale-95 mt-4`}>
-                                    Finalize & Create
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                )}
+
 
                 {/* 2. Add/Edit Chapter Modal */}
                 {showChapterModal && (
