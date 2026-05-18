@@ -28,5 +28,26 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
             },
         }),
     ],
-    session: { strategy: 'jwt' },
+    session: {
+        strategy: 'jwt',
+        maxAge: 10 * 60, // 10 minutes in seconds
+    },
+    callbacks: {
+        authorized: authConfig.callbacks.authorized,
+        async jwt({ token, user, trigger, session }) {
+            if (user) {
+                token.role = user.role;
+                token.id = user.id;
+                token.status = user.status;
+                token.iat = Math.floor(Date.now() / 1000);
+            }
+
+            if (trigger === "update" && session) {
+                token = { ...token, ...session };
+            }
+
+            return token;
+        },
+        session: authConfig.callbacks.session,
+    },
 });

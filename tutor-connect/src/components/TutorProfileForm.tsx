@@ -2,11 +2,20 @@
 
 import { useState } from 'react';
 import { updateTutorProfile } from '@/app/actions/tutor';
-import { TutorProfile, Subject } from '@prisma/client';
+import { TutorProfile, Subject, Availability as TutorAvailability } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 
+const DAYS_OF_WEEK = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
+type DayOfWeek = (typeof DAYS_OF_WEEK)[number];
+
+type AvailabilityItem = {
+    dayOfWeek: DayOfWeek;
+    startTime: string;
+    endTime: string;
+};
+
 interface TutorProfileFormProps {
-    profile: TutorProfile;
+    profile: TutorProfile & { availability?: TutorAvailability[] };
     allSubjects: Subject[];
     selectedSubjectIds: string[];
 }
@@ -26,7 +35,18 @@ export function TutorProfileForm({ profile, allSubjects, selectedSubjectIds }: T
     const [locationCity, setLocationCity] = useState(profile.locationCity || '');
     const [locationArea, setLocationArea] = useState(profile.locationArea || '');
     const [tutoringMode, setTutoringMode] = useState(profile.tutoringMode || 'BOTH');
-    
+
+    const [availabilityEntries, setAvailabilityEntries] = useState<AvailabilityItem[]>(
+        (profile.availability || []).map((entry) => ({
+            dayOfWeek: entry.dayOfWeek as DayOfWeek,
+            startTime: entry.startTime,
+            endTime: entry.endTime,
+        }))
+    );
+    const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayOfWeek>(profile.availability?.[0]?.dayOfWeek || 'MONDAY');
+    const [selectedAvailabilityStart, setSelectedAvailabilityStart] = useState(profile.availability?.[0]?.startTime || '09:00');
+    const [selectedAvailabilityEnd, setSelectedAvailabilityEnd] = useState(profile.availability?.[0]?.endTime || '17:00');
+
     // Subject selection state
     const [checkedSubjects, setCheckedSubjects] = useState<Set<string>>(new Set(selectedSubjectIds));
 
@@ -38,6 +58,31 @@ export function TutorProfileForm({ profile, allSubjects, selectedSubjectIds }: T
             newChecked.add(subjectId);
         }
         setCheckedSubjects(newChecked);
+    };
+
+    const addAvailability = () => {
+        if (!selectedAvailabilityDay || !selectedAvailabilityStart || !selectedAvailabilityEnd) return;
+        if (selectedAvailabilityStart >= selectedAvailabilityEnd) {
+            setError('Availability end time must be after start time.');
+            return;
+        }
+
+        setError(null);
+        setAvailabilityEntries((prev) => {
+            const filtered = prev.filter((entry) => entry.dayOfWeek !== selectedAvailabilityDay);
+            return [
+                ...filtered,
+                {
+                    dayOfWeek: selectedAvailabilityDay,
+                    startTime: selectedAvailabilityStart,
+                    endTime: selectedAvailabilityEnd,
+                },
+            ];
+        });
+    };
+
+    const removeAvailability = (dayOfWeek: DayOfWeek) => {
+        setAvailabilityEntries((prev) => prev.filter((entry) => entry.dayOfWeek !== dayOfWeek));
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -53,6 +98,7 @@ export function TutorProfileForm({ profile, allSubjects, selectedSubjectIds }: T
             Array.from(checkedSubjects).forEach((subjectId) => {
                 formData.append('subjects', subjectId);
             });
+            formData.set('availabilities', JSON.stringify(availabilityEntries));
 
             await updateTutorProfile(formData);
             setSuccess(true);
@@ -197,6 +243,76 @@ export function TutorProfileForm({ profile, allSubjects, selectedSubjectIds }: T
                         <p className="text-sm text-slate-500 col-span-3">No subjects available in the platform.</p>
                     )}
                 </div>
+            </div>
+
+            <div className="space-y-6">
+                <h3 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-2">Weekly Availability</h3>
+                <p className="text-sm text-slate-600">Set the weekly time blocks when you are available to teach. Students will only be able to request sessions inside these ranges.</p>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Day</label>
+                        <select
+                            value={selectedAvailabilityDay}
+                            onChange={(e) => setSelectedAvailabilityDay(e.target.value as DayOfWeek)}
+                            className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        >
+                            {DAYS_OF_WEEK.map((day) => (
+                                <option key={day} value={day}>{day}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">From</label>
+                        <input
+                            type="time"
+                            value={selectedAvailabilityStart}
+                            onChange={(e) => setSelectedAvailabilityStart(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Until</label>
+                        <input
+                            type="time"
+                            value={selectedAvailabilityEnd}
+                            onChange={(e) => setSelectedAvailabilityEnd(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={addAvailability}
+                        className="rounded-lg bg-slate-800 px-6 py-2 text-sm font-semibold text-white hover:bg-slate-900 transition-colors"
+                    >
+                        Add / Update Availability
+                    </button>
+                </div>
+
+                {availabilityEntries.length > 0 ? (
+                    <div className="space-y-3">
+                        {availabilityEntries.map((entry) => (
+                            <div key={entry.dayOfWeek} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                <div>
+                                    <p className="font-semibold text-slate-900">{entry.dayOfWeek}</p>
+                                    <p className="text-sm text-slate-600">{entry.startTime} – {entry.endTime}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => removeAvailability(entry.dayOfWeek)}
+                                    className="text-red-600 hover:text-red-800 text-sm font-semibold"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm text-slate-500">No weekly availability set yet.</p>
+                )}
             </div>
 
             <div className="pt-6 border-t border-slate-200 flex justify-end">

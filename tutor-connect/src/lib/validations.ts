@@ -54,12 +54,33 @@ export const withdrawSchema = z.object({
 // Booking
 export const bookingSchema = z.object({
     tutorId: z.string(),
+<<<<<<< HEAD
     subjectName: z.string(),
     scheduledFor: z.string().datetime(),
     endDate: z.string().datetime().optional(),
     schedule: z.string().optional(), // Expected to be stringified JSON array
     duration: z.number().min(30), // Minimum 30 mins, no max limit since it can be across weeks
+=======
+    subjectName: z.string().min(2),
+    scheduledFor: z.string().datetime({ offset: true }),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    packageDuration: z.string().optional(),
+    daysPerWeek: z.number().min(1).max(7),
+    selectedDays: z.array(z.enum(['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'])).min(1),
+    startTime: z.string().min(1),
+    endTime: z.string().min(1),
+    timezone: z.string().min(1),
+    hoursPerSession: z.number().min(1),
+    duration: z.number().min(30),
+>>>>>>> e4f534e5f9af3f18933c5b4692e2670445658ec5
     notes: z.string().optional(),
+    scheduleDetails: z.object({
+        selectedDays: z.array(z.enum(['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'])),
+        startTime: z.string(),
+        endTime: z.string(),
+        timezone: z.string(),
+    }).optional(),
 })
 
 // Review

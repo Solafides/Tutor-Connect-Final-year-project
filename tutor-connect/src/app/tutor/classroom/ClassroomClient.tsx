@@ -529,13 +529,6 @@ export default function ClassroomClient() {
                                                 <div className="flex items-center gap-2 text-xs font-bold text-slate-400 mb-2">
                                                     <span className="font-mono text-[10px] bg-slate-100 px-2 py-0.5 rounded-md text-slate-500">ID: {cls.id}</span>
                                                 </div>
-                                                <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                                    <span>Course Progress</span>
-                                                    <span>{cls.progress}%</span>
-                                                </div>
-                                                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                    <div className={`${brandGreen} h-full rounded-full transition-all duration-700`} style={{ width: `${cls.progress}%` }}></div>
-                                                </div>
                                             </div>
                                             <button className={`bg-slate-900 text-white p-3.5 rounded-[1.25rem] group-hover:${brandGreen} transition-all shadow-xl`}>
                                                 <ChevronRight size={22} />
