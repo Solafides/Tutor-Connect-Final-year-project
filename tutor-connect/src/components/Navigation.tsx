@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserRole } from '@prisma/client';
 import { useState, useEffect, useRef } from 'react';
+import { getUnreadMessageCount } from '@/app/actions/chat';
 
 interface NavigationProps {
     userRole?: UserRole;
@@ -18,6 +19,7 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
     const [notifications, setNotifications] = useState<any[]>([]);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
     const notificationRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -31,6 +33,19 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                     }
                 })
                 .catch(err => console.error(err));
+                
+            getUnreadMessageCount()
+                .then(count => setUnreadChatCount(count))
+                .catch(err => console.error(err));
+                
+            const handleMessagesRead = () => {
+                getUnreadMessageCount()
+                    .then(count => setUnreadChatCount(count))
+                    .catch(err => console.error(err));
+            };
+            
+            window.addEventListener('messagesRead', handleMessagesRead);
+            return () => window.removeEventListener('messagesRead', handleMessagesRead);
         }
     }, [userRole, pathname]);
 
@@ -85,11 +100,13 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
         { href: '/student/wallet', label: 'Payment History', icon: 'receipt_long', roles: ['STUDENT'] as UserRole[] },
         { href: '/student/bookings', label: 'My Bookings', icon: 'event', roles: ['STUDENT'] as UserRole[] },
         { href: '/student/classroom', label: 'My Classrooms', icon: 'school', roles: ['STUDENT'] as UserRole[] },
+        { href: '/student/messages', label: 'Messages', icon: 'chat', roles: ['STUDENT'] as UserRole[] },
         { href: '/tutor/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['TUTOR'] as UserRole[] },
         { href: '/tutor/profile', label: 'My Profile', icon: 'person', roles: ['TUTOR'] as UserRole[] },
         { href: '/tutor/bookings', label: 'Bookings', icon: 'event', roles: ['TUTOR'] as UserRole[] },
         { href: '/tutor/classroom', label: 'My Classrooms', icon: 'school', roles: ['TUTOR'] as UserRole[] },
         { href: '/tutor/wallet', label: 'Earnings', icon: 'account_balance_wallet', roles: ['TUTOR'] as UserRole[] },
+        { href: '/tutor/messages', label: 'Messages', icon: 'chat', roles: ['TUTOR'] as UserRole[] },
     ];
 
     const filteredNavItems = userRole
@@ -116,12 +133,19 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                                     <Link
                                         key={item.href}
                                         href={item.href}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${isActive
                                             ? 'bg-emerald-600 text-white'
                                             : 'text-slate-700 hover:bg-slate-100'
                                             }`}
                                     >
-                                        <span className="material-symbols-outlined text-lg">{item.icon}</span>
+                                        <div className="relative flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-base">{item.icon}</span>
+                                            {item.label === 'Messages' && unreadChatCount > 0 && (
+                                                <span className="absolute -top-1 -right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white shadow-sm ring-1 ring-white">
+                                                    {unreadChatCount}
+                                                </span>
+                                            )}
+                                        </div>
                                         {item.label}
                                     </Link>
                                 );
@@ -250,11 +274,18 @@ export function Navigation({ userRole, userName, isLandingPageNav = false }: Nav
                                             key={item.href}
                                             href={item.href}
                                             onClick={() => setIsMenuOpen(false)}
-                                            className={`flex items-center gap-3 -mx-3 rounded-lg px-3 py-3 text-base font-bold leading-7 transition-colors ${
+                                            className={`flex items-center gap-3 -mx-3 rounded-lg px-3 py-3 text-sm font-bold leading-7 transition-colors ${
                                                 isActive ? 'bg-emerald-50 text-emerald-700' : 'text-slate-900 hover:bg-slate-50'
                                             }`}
                                         >
-                                            <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                                            <div className="relative flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-sm">{item.icon}</span>
+                                                {item.label === 'Messages' && unreadChatCount > 0 && (
+                                                    <span className="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                                                        {unreadChatCount}
+                                                    </span>
+                                                )}
+                                            </div>
                                             {item.label}
                                         </Link>
                                     );

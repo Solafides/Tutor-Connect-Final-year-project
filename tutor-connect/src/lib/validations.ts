@@ -56,7 +56,9 @@ export const bookingSchema = z.object({
     tutorId: z.string(),
     subjectName: z.string(),
     scheduledFor: z.string().datetime(),
-    duration: z.number().min(30).max(180), // 30 min to 3 hours
+    endDate: z.string().datetime().optional(),
+    schedule: z.string().optional(), // Expected to be stringified JSON array
+    duration: z.number().min(30), // Minimum 30 mins, no max limit since it can be across weeks
     notes: z.string().optional(),
 })
 

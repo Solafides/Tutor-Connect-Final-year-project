@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { MultiSelect } from './MultiSelect';
 
 interface SearchFiltersProps {
     subjects: string[];
@@ -12,8 +13,52 @@ interface SearchFiltersProps {
         maxPrice?: string;
         mode?: string;
         gender?: string;
+        dayOfWeek?: string;
+        timeInterval?: string;
     };
 }
+
+const cityOptions = [
+    { value: 'Addis Ababa', label: 'Addis Ababa' },
+    { value: 'Hawassa', label: 'Hawassa' },
+    { value: 'DireDawa', label: 'DireDawa' },
+    { value: 'BahirDar', label: 'BahirDar' },
+    { value: 'Mekele', label: 'Mekele' },
+    { value: 'Harar', label: 'Harar' },
+    { value: 'Jimma', label: 'Jimma' },
+    { value: 'Nazret/Adama', label: 'Nazret/Adama' },
+    { value: 'Hossana', label: 'Hossana' },
+    { value: 'Shashemene', label: 'Shashemene' },
+    { value: 'Gondar', label: 'Gondar' }
+];
+
+const dayOptions = [
+    { value: 'MONDAY', label: 'Monday' },
+    { value: 'TUESDAY', label: 'Tuesday' },
+    { value: 'WEDNESDAY', label: 'Wednesday' },
+    { value: 'THURSDAY', label: 'Thursday' },
+    { value: 'FRIDAY', label: 'Friday' },
+    { value: 'SATURDAY', label: 'Saturday' },
+    { value: 'SUNDAY', label: 'Sunday' }
+];
+
+const formatTimeAMPM = (hours: number) => {
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const h = hours % 12 || 12;
+    return `${h.toString().padStart(2, '0')}:00 ${ampm}`;
+};
+
+const timeIntervals = Array.from({ length: 24 }, (_, i) => {
+    const startHour = i;
+    const endHour = (i + 1) % 24;
+    const start24 = startHour.toString().padStart(2, '0') + ':00';
+    const end24 = endHour.toString().padStart(2, '0') + ':00';
+    
+    return {
+        value: `${start24}-${end24}`,
+        label: `${formatTimeAMPM(startHour)} - ${formatTimeAMPM(endHour)}`
+    };
+});
 
 export function SearchFilters({ subjects, initialValues }: SearchFiltersProps) {
     const router = useRouter();
@@ -26,7 +71,13 @@ export function SearchFilters({ subjects, initialValues }: SearchFiltersProps) {
         maxPrice: initialValues?.maxPrice || '',
         mode: initialValues?.mode || '',
         gender: initialValues?.gender || '',
+        dayOfWeek: initialValues?.dayOfWeek || '',
+        timeInterval: initialValues?.timeInterval || '',
     });
+
+    const handleMultiChange = (key: string, values: string[]) => {
+        setFilters(prev => ({ ...prev, [key]: values.join(',') }));
+    };
 
     const handleFilterChange = (key: string, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -52,6 +103,8 @@ export function SearchFilters({ subjects, initialValues }: SearchFiltersProps) {
             maxPrice: '',
             mode: '',
             gender: '',
+            dayOfWeek: '',
+            timeInterval: '',
         });
         router.push('/search');
     };
@@ -73,34 +126,41 @@ export function SearchFilters({ subjects, initialValues }: SearchFiltersProps) {
             </div>
 
             {/* Subject Filter */}
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Subject
-                </label>
-                <input
-                    type="text"
-                    placeholder="e.g. Mathematics, Physics"
-                    value={filters.subject}
-                    onChange={(e) => handleFilterChange('subject', e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-                />
-            </div>
+            <MultiSelect
+                label="Subject"
+                placeholder="Select subjects..."
+                options={subjects.map(s => ({ value: s, label: s }))}
+                selectedValues={filters.subject ? filters.subject.split(',') : []}
+                onChange={(values) => handleMultiChange('subject', values)}
+            />
 
             {/* Location Filter */}
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                    City
-                </label>
-                <input
-                    type="text"
-                    placeholder="e.g. Addis Ababa, Hawassa"
-                    value={filters.city}
-                    onChange={(e) => handleFilterChange('city', e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-                />
-            </div>
+            <MultiSelect
+                label="City"
+                placeholder="Select cities..."
+                options={cityOptions}
+                selectedValues={filters.city ? filters.city.split(',') : []}
+                onChange={(values) => handleMultiChange('city', values)}
+            />
+
+            {/* Day of the week Filter */}
+            <MultiSelect
+                label="Day of the Week"
+                placeholder="Select days..."
+                options={dayOptions}
+                selectedValues={filters.dayOfWeek ? filters.dayOfWeek.split(',') : []}
+                onChange={(values) => handleMultiChange('dayOfWeek', values)}
+            />
+
+            {/* Time Interval Filter */}
+            <MultiSelect
+                label="Time Interval"
+                placeholder="Select time intervals..."
+                helperText="All times are GMT+3"
+                options={timeIntervals}
+                selectedValues={filters.timeInterval ? filters.timeInterval.split(',') : []}
+                onChange={(values) => handleMultiChange('timeInterval', values)}
+            />
 
             {/* Price Range */}
             <div>

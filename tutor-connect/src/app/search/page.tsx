@@ -14,6 +14,8 @@ interface SearchParams {
         maxPrice?: string;
         mode?: string;
         gender?: string;
+        dayOfWeek?: string;
+        timeInterval?: string;
     }>;
 }
 
@@ -28,12 +30,12 @@ export default async function SearchPage({ searchParams }: SearchParams) {
 
     // Subject filter
     if (params.subject) {
+        const subjectsList = params.subject.split(',');
         where.subjects = {
             some: {
                 subject: {
                     name: {
-                        contains: params.subject,
-                        mode: 'insensitive',
+                        in: subjectsList,
                     },
                 },
             },
@@ -42,9 +44,9 @@ export default async function SearchPage({ searchParams }: SearchParams) {
 
     // Location filter
     if (params.city) {
+        const citiesList = params.city.split(',');
         where.locationCity = {
-            contains: params.city,
-            mode: 'insensitive',
+            in: citiesList,
         };
     }
 
@@ -67,6 +69,30 @@ export default async function SearchPage({ searchParams }: SearchParams) {
     // Gender filter
     if (params.gender) {
         where.gender = params.gender;
+    }
+
+    // Availability filter
+    if (params.dayOfWeek || params.timeInterval) {
+        where.availability = {
+            some: {}
+        };
+        
+        if (params.dayOfWeek) {
+            where.availability.some.dayOfWeek = {
+                in: params.dayOfWeek.split(',')
+            };
+        }
+
+        if (params.timeInterval) {
+            const intervals = params.timeInterval.split(',');
+            where.availability.some.OR = intervals.map(interval => {
+                const [startTime, endTime] = interval.split('-');
+                return {
+                    startTime: { lte: startTime },
+                    endTime: { gte: endTime }
+                };
+            });
+        }
     }
 
     const tutors = await prisma.tutorProfile.findMany({

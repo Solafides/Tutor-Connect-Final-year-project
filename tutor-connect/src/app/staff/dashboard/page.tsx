@@ -38,6 +38,7 @@ import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
+import ChatLayout from '@/components/chat/ChatLayout';
 
 export default async function StaffDashboardPage({ searchParams }: { searchParams: any }) {
     // 1. Authorization & Session Check
@@ -93,6 +94,13 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
             booking: {
                 include: { student: true, tutor: true }
             }
+        }
+    });
+
+    const unreadMessagesCount = await prisma.message.count({
+        where: {
+            receiverId: session.user.id,
+            isRead: false
         }
     });
 
@@ -341,25 +349,33 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                 </div>
 
                 <nav className="flex-1 overflow-y-auto p-4 space-y-2 mt-4">
-                    <SidebarItem icon={<Layout size={20} />} label="Overview" tabName="overview" active={activeTab === 'overview'} />
+                    <SidebarItem icon={<Layout size={18} />} label="Overview" tabName="overview" active={activeTab === 'overview'} />
                     <SidebarItem 
-                        icon={<UserCheck size={20} />} 
+                        icon={<UserCheck size={18} />} 
                         label="Verifications" 
                         tabName="verifications" 
                         active={activeTab === 'verifications'} 
                         badge={pendingTutors.length > 0 ? pendingTutors.length : undefined} 
                     />
-                    <SidebarItem icon={<Users size={20} />} label="Manage Tutors" tabName="tutors" active={activeTab === 'tutors'} />
-                    <SidebarItem icon={<CalendarCheck size={20} />} label="All Bookings" tabName="bookings" active={activeTab === 'bookings'} />
+                    <SidebarItem icon={<Users size={18} />} label="Manage Tutors" tabName="tutors" active={activeTab === 'tutors'} />
+                    <SidebarItem icon={<CalendarCheck size={18} />} label="All Bookings" tabName="bookings" active={activeTab === 'bookings'} />
                     <SidebarItem 
-                        icon={<AlertCircle size={20} />} 
+                        icon={<AlertCircle size={18} />} 
                         label="Support Tickets" 
                         tabName="support" 
                         active={activeTab === 'support'} 
                         badge={openComplaints.length > 0 ? openComplaints.length : undefined}
                     />
+                    <SidebarItem 
+                        icon={<MessageSquare size={18} />} 
+                        label="Messages" 
+                        tabName="messages" 
+                        active={activeTab === 'messages'} 
+                        badge={unreadMessagesCount > 0 ? unreadMessagesCount : undefined}
+                        badgeColor="blue"
+                    />
                     {session.user.role === 'ADMIN' && (
-                        <SidebarItem icon={<Settings size={20} />} label="System Settings" tabName="settings" active={activeTab === 'settings'} />
+                        <SidebarItem icon={<Settings size={18} />} label="System Settings" tabName="settings" active={activeTab === 'settings'} />
                     )}
                 </nav>
 
@@ -1090,6 +1106,13 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                     </div>
                 )}
 
+                {/* TAB: MESSAGES */}
+                {activeTab === 'messages' && (
+                    <div className="h-[calc(100vh-180px)] animate-in fade-in duration-500">
+                        <ChatLayout currentUserId={session.user.id} />
+                    </div>
+                )}
+
             </main>
         </div>
     );
@@ -1097,7 +1120,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
 
 // --- SHARED UI SUB-COMPONENTS ---
 
-function SidebarItem({ icon, label, tabName, active, badge }: { icon: React.ReactNode, label: string, tabName: string, active?: boolean, badge?: number }) {
+function SidebarItem({ icon, label, tabName, active, badge, badgeColor = 'red' }: { icon: React.ReactNode, label: string, tabName: string, active?: boolean, badge?: number, badgeColor?: 'red' | 'blue' }) {
     return (
         <Link
             href={`/staff/dashboard?tab=${tabName}`}
@@ -1107,12 +1130,12 @@ function SidebarItem({ icon, label, tabName, active, badge }: { icon: React.Reac
                 : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-bold'
             }`}
         >
-            <div className="flex items-center gap-4 text-sm tracking-tight">
+            <div className="flex items-center gap-3 text-xs tracking-tight">
                 <span className={`${active ? 'text-emerald-600' : 'text-slate-400 group-hover:text-emerald-500'} transition-colors`}>{icon}</span>
                 <span>{label}</span>
             </div>
             {badge ? (
-                <span className="bg-red-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-bounce">
+                <span className={`${badgeColor === 'blue' ? 'bg-blue-600' : 'bg-red-500'} text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-bounce shadow-sm`}>
                     {badge}
                 </span>
             ) : null}

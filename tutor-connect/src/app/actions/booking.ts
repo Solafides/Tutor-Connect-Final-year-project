@@ -17,6 +17,8 @@ export async function createBooking(formData: FormData) {
         tutorId: formData.get('tutorId') as string,
         subjectName: formData.get('subjectName') as string,
         scheduledFor: formData.get('scheduledFor') as string,
+        endDate: formData.get('endDate') as string || undefined,
+        schedule: formData.get('schedule') as string || undefined,
         duration: parseInt(formData.get('duration') as string),
         notes: formData.get('notes') as string || undefined,
     };
@@ -26,7 +28,7 @@ export async function createBooking(formData: FormData) {
         throw new Error('Invalid booking data');
     }
 
-    const { tutorId, subjectName, scheduledFor, duration, notes } = result.data;
+    const { tutorId, subjectName, scheduledFor, endDate, schedule, duration, notes } = result.data;
 
     const tutor = await prisma.tutorProfile.findUnique({
         where: { id: tutorId }
@@ -60,6 +62,8 @@ export async function createBooking(formData: FormData) {
             studentId,
             subjectName,
             scheduledFor: new Date(scheduledFor),
+            endDate: endDate ? new Date(endDate) : undefined,
+            schedule: schedule ? JSON.parse(schedule) : undefined,
             duration,
             notes,
             totalAmount,

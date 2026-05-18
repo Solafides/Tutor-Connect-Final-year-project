@@ -22,7 +22,9 @@ model User {
   studentProfile StudentProfile?
   tutorProfile   TutorProfile?
   wallet         Wallet?
-  notifications  Notification[]
+  notifications    Notification[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 
   @@index([email])
   @@index([role])
@@ -184,6 +186,8 @@ model Booking {
   tutorId            String         @map("tutor_id")
   subjectName        String         @map("subject_name")
   scheduledFor       DateTime       @map("scheduled_for")
+  endDate            DateTime?      @map("end_date")
+  schedule           Json?
   duration           Int
   status             BookingStatus  @default(PENDING)
   totalAmount        Decimal        @map("total_amount") @db.Decimal(10, 2)
@@ -394,4 +398,20 @@ model VerificationToken {
 enum VerificationTokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String   @map("sender_id")
+  receiverId String   @map("receiver_id")
+  content    String
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@map("messages")
 }
