@@ -4,7 +4,7 @@
   "description": "A tutoring platform connecting students with verified tutors in Ethiopia",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
