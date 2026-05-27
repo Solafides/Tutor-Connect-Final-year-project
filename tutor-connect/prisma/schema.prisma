@@ -188,21 +188,14 @@ model Booking {
   scheduledFor       DateTime            @map("scheduled_for")
   startDate          DateTime?           @map("start_date")
   endDate            DateTime?           @map("end_date")
-  packageDuration    String?             @map("package_duration")
-  daysPerWeek        Int?                @map("days_per_week")
   scheduleDetails    Json?               @map("schedule_details")
   schedule           Json?
   duration           Int
-  totalSessions      Int?                @map("total_sessions")
-  totalHours         Decimal?            @map("total_hours") @db.Decimal(10, 2)
   status             BookingStatus       @default(PENDING)
   totalAmount        Decimal             @map("total_amount") @db.Decimal(10, 2)
   platformFee        Decimal             @map("platform_fee") @db.Decimal(10, 2)
   tutorEarning       Decimal             @map("tutor_earning") @db.Decimal(10, 2)
   escrowStatus       EscrowStatus        @default(HELD) @map("escrow_status")
-  completedByTutor   Boolean?            @default(false) @map("completed_by_tutor")
-  completedByStudent Boolean?            @default(false) @map("completed_by_student")
-  completedAt        DateTime?           @map("completed_at")
   notes              String?
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
