@@ -28,9 +28,10 @@ export async function POST(req: Request) {
         
         const protocol = req.headers.get('x-forwarded-proto') || 'http';
         const host = req.headers.get('host') || 'localhost:3000';
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
         
         // This is the page the student will be redirected to after checking out on Chapa
-        const return_url = `${protocol}://${host}/student/bookings/${booking.id}/verify?tx_ref=${tx_ref}`;
+        const return_url = `${baseUrl}/student/bookings/${booking.id}/verify?tx_ref=${tx_ref}`;
 
         // We use the Transaction log to keep a ledger of the payment initiation
         let wallet = await prisma.wallet.findUnique({ where: { userId: session.user.id } });

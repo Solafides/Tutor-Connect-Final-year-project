@@ -23,7 +23,8 @@ export async function POST(req: Request) {
         // Ideally this comes from env var like NEXT_PUBLIC_APP_URL
         const protocol = req.headers.get('x-forwarded-proto') || 'http';
         const host = req.headers.get('host') || 'localhost:3000';
-        const return_url = `${protocol}://${host}/student/wallet/verify?tx_ref=${tx_ref}`;
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+        const return_url = `${baseUrl}/student/wallet/verify?tx_ref=${tx_ref}`;
 
         // Create pending transaction in DB
         let wallet = await prisma.wallet.findUnique({
