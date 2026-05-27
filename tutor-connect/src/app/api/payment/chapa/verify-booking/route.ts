@@ -74,14 +74,33 @@ export async function GET(req: Request) {
                 // Update booking to escrow condition
                 // If it was PENDING it becomes ACCEPTED (or stays PENDING waiting for tutor, but usually payment implies confirmed)
                 // We'll set the status to ACCEPTED since the payment is locked
-                await tx.booking.update({
+                const updatedBooking = await tx.booking.update({
                     where: { id: booking.id },
                     data: {
                         status: 'ACCEPTED',
                         escrowStatus: 'HELD',
                         isPaid: true
-                    }
+                    },
+                    include: { tutor: true, classroom: true }
                 });
+
+                if (!updatedBooking.classroom) {
+                    const classroom = await tx.classroom.create({
+                        data: {
+                            bookingId: updatedBooking.id,
+                            tutorId: updatedBooking.tutorId,
+                            title: `${updatedBooking.subjectName} with ${updatedBooking.tutor.fullName}`,
+                            subject: updatedBooking.subjectName,
+                        }
+                    });
+
+                    await tx.studentEnrollment.create({
+                        data: {
+                            classroomId: classroom.id,
+                            studentId: updatedBooking.studentId,
+                        }
+                    });
+                }
             });
 
             // Fetch user for email

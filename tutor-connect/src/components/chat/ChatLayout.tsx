@@ -44,7 +44,7 @@ export default function ChatLayout({ currentUserId }: { currentUserId: string })
     }
 
     return (
-        <div className="flex h-[calc(100vh-100px)] w-full overflow-hidden bg-white rounded-lg shadow-sm border border-slate-200">
+        <div className="flex h-full min-h-[480px] w-full overflow-hidden bg-white rounded-lg shadow-sm border border-slate-200">
             {/* Sidebar */}
             <div className={`w-full md:w-80 flex flex-col border-r bg-white ${selectedContactId ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b bg-slate-50">

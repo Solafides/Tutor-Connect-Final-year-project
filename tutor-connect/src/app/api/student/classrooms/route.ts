@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         where: {
             studentId: studentProfile.id,
             status: 'ACCEPTED',
+            isPaid: true,
         },
         orderBy: { scheduledFor: 'desc' },
         include: {
@@ -37,32 +38,11 @@ export async function GET(request: NextRequest) {
         },
     });
 
-    const classes = await Promise.all(bookings.map(async (booking) => {
-        let classroom = booking.classroom;
-        
-        // Auto-create classroom if it doesn't exist
-        if (!classroom) {
-            classroom = await prisma.classroom.create({
-                data: {
-                    bookingId: booking.id,
-                    tutorId: booking.tutorId,
-                    title: `${booking.subjectName} with ${booking.tutor?.fullName}`,
-                    subject: booking.subjectName,
-                },
-                include: {
-                    resources: true
-                }
-            });
-            
-            // Auto-enroll the student
-            await prisma.studentEnrollment.create({
-                data: {
-                    classroomId: classroom.id,
-                    studentId: booking.studentId,
-                }
-            });
-        }
-        
+    const classes = bookings
+        .filter((booking) => booking.classroom)
+        .map((booking) => {
+        const classroom = booking.classroom!;
+
         return {
             id: classroom.id,
             bookingId: booking.id,
@@ -82,7 +62,7 @@ export async function GET(request: NextRequest) {
                 uploadedAt: resource.uploadedAt.toISOString(),
             })),
         };
-    }));
+    });
 
     return NextResponse.json({ classes });
 }

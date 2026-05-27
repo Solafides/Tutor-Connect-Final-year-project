@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import crypto from 'crypto';
+import { getAppBaseUrl } from '@/lib/utils';
 
 export async function payForBooking(bookingId: string) {
     const session = await auth();
@@ -35,12 +36,8 @@ export async function payForBooking(bookingId: string) {
         throw new Error('Booking must be accepted by the tutor before payment');
     }
 
-    // Initialize Chapa
-    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-    const host = process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL).host : 'localhost:3000';
-    
     const tx_ref = `TC-BOOKING-${booking.id}-${crypto.randomBytes(4).toString('hex')}`;
-    const return_url = `${protocol}://${host}/student/bookings/${booking.id}/verify?tx_ref=${tx_ref}`;
+    const return_url = `${getAppBaseUrl()}/student/bookings/${booking.id}/verify?tx_ref=${tx_ref}`;
 
     // Ledger Entry (To track payment history)
     let wallet = await prisma.wallet.findUnique({ where: { userId: session.user.id } });

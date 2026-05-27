@@ -448,6 +448,11 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                     </div>
                 </header>
 
+                {activeTab === 'messages' ? (
+                    <div className="flex-1 min-h-0 p-4 md:p-6">
+                        <ChatLayout currentUserId={session.user.id} />
+                    </div>
+                ) : (
                 <div className="flex-1 overflow-y-auto p-8 lg:p-12">
 
                     {/* TAB: OVERVIEW */}
@@ -829,6 +834,7 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                     )}
 
                 </div>
+                )}
 
                 {/* --- FLOATING MODALS & DRAWERS --- */}
 
@@ -1122,13 +1128,6 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                                 )}
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {/* TAB: MESSAGES */}
-                {activeTab === 'messages' && (
-                    <div className="h-[calc(100vh-180px)] animate-in fade-in duration-500">
-                        <ChatLayout currentUserId={session.user.id} />
                     </div>
                 )}
 

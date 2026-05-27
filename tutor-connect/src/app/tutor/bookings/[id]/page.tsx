@@ -56,6 +56,16 @@ export default async function TutorBookingDetailsPage(props: { params: Promise<{
     async function startSession(formData: FormData) {
         'use server';
         const bookingId = formData.get('bookingId') as string;
+
+        const paidBooking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            select: { isPaid: true, status: true }
+        });
+
+        if (!paidBooking?.isPaid) {
+            throw new Error('Cannot start session until the student has completed payment.');
+        }
+
         const meetingId = `TutorConnect_Booking_${bookingId}`;
         const meetingLink = `https://meet.jit.si/${meetingId}`;
 
@@ -265,7 +275,9 @@ export default async function TutorBookingDetailsPage(props: { params: Promise<{
                             </div>
 
                             <div className="space-y-3 w-full sm:w-auto">
-                                {booking.classroom?.meetingLink ? (
+                                {!booking.isPaid ? (
+                                    <p className="text-sm text-amber-700 font-medium">Waiting for student payment before you can start a live session.</p>
+                                ) : booking.classroom?.meetingLink ? (
                                     <Link
                                         href={booking.classroom.meetingLink}
                                         target="_blank"

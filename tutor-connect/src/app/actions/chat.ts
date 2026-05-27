@@ -100,33 +100,46 @@ export async function getChatContacts() {
             }));
             contacts = [...students];
         }
-    } else if (user.role === 'STAFF') {
-        // Staff can see users who have messaged them or they have messaged
-        const messages = await prisma.message.findMany({
+    } else if (user.role === 'STAFF' || user.role === 'ADMIN') {
+        const messageContacts = await prisma.message.findMany({
             where: {
                 OR: [
                     { senderId: user.id },
                     { receiverId: user.id }
                 ]
             },
-            include: {
-                sender: { include: { studentProfile: true, tutorProfile: true } },
-                receiver: { include: { studentProfile: true, tutorProfile: true } }
-            }
+            select: { senderId: true, receiverId: true }
         });
-        
-        const uniqueUserIds = new Set();
-        messages.forEach(m => {
+
+        const uniqueUserIds = new Set<string>();
+        messageContacts.forEach((m) => {
             if (m.senderId !== user.id) uniqueUserIds.add(m.senderId);
             if (m.receiverId !== user.id) uniqueUserIds.add(m.receiverId);
         });
-        
+
+        const bookingUsers = await prisma.booking.findMany({
+            take: 100,
+            orderBy: { createdAt: 'desc' },
+            include: {
+                student: { include: { user: true } },
+                tutor: { include: { user: true } }
+            }
+        });
+
+        bookingUsers.forEach((booking) => {
+            uniqueUserIds.add(booking.student.userId);
+            uniqueUserIds.add(booking.tutor.userId);
+        });
+
         const activeContacts = await prisma.user.findMany({
-            where: { id: { in: Array.from(uniqueUserIds) as string[] } },
+            where: {
+                id: { in: Array.from(uniqueUserIds) },
+                role: { in: ['STUDENT', 'TUTOR'] }
+            },
             include: { studentProfile: true, tutorProfile: true }
         });
-        
-        contacts = activeContacts.map(c => ({
+
+        contacts = activeContacts.map((c) => ({
             id: c.id,
             email: c.email,
             name: c.studentProfile?.fullName || c.tutorProfile?.fullName || c.email,
@@ -199,8 +212,13 @@ export async function getMessages(contactId: string) {
 export async function sendMessage(receiverId: string, content: string) {
     const user = await getUser();
     
-    // Verify rules
-    if (user.role === 'STUDENT' || user.role === 'TUTOR') {
+    // Staff and admins can message any student or tutor
+    if (user.role === 'STAFF' || user.role === 'ADMIN') {
+        const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
+        if (!receiver || (receiver.role !== 'STUDENT' && receiver.role !== 'TUTOR')) {
+            throw new Error('Staff can only message students and tutors.');
+        }
+    } else if (user.role === 'STUDENT' || user.role === 'TUTOR') {
         const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
         
         if (receiver && receiver.role !== 'STAFF') {
