@@ -42,7 +42,6 @@ export async function createBooking(formData: FormData) {
     const subjectName = formData.get('subjectName') as string;
     const startDate = formData.get('startDate') as string;
     const endDate = formData.get('endDate') as string;
-    const packageDuration = formData.get('packageDuration') as string;
     const daysPerWeek = parseInteger(formData.get('daysPerWeek'), 1);
     const selectedDays = parseJsonValue<DayOfWeek[]>(formData.get('selectedDays'), []);
     const startTime = formData.get('startTime') as string;
@@ -85,7 +84,6 @@ export async function createBooking(formData: FormData) {
         scheduledFor: buildISODateTime(firstSessionDates[0], startTime).toISOString(),
         startDate,
         endDate,
-        packageDuration,
         daysPerWeek,
         selectedDays,
         startTime,
@@ -220,13 +218,9 @@ export async function createBooking(formData: FormData) {
             scheduledFor: buildISODateTime(sessionDates[0], startTime),
             startDate: new Date(startDate),
             endDate: new Date(endDate),
-            packageDuration,
-            daysPerWeek,
             duration: hoursPerSession * 60,
 
             totalAmount,
-            totalHours,
-            totalSessions,
             platformFee,
             tutorEarning,
             notes: notes || undefined,

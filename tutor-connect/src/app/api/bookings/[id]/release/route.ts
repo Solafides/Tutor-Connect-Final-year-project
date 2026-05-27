@@ -42,9 +42,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
                 where: { id: bookingId },
                 data: {
                     escrowStatus: 'RELEASED',
-                    completedByStudent: true,
                     status: 'COMPLETED',
-                    completedAt: new Date()
                 }
             });
 
