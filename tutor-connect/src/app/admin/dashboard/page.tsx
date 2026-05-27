@@ -197,7 +197,6 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
                     <SidebarItem icon={<Users size={18} />} label="User Management" tabName="users" active={activeTab === 'users'} />
                     <SidebarItem icon={<UserCog size={18} />} label="Staff Management" tabName="staff" active={activeTab === 'staff'} />
                     <SidebarItem icon={<DollarSign size={18} />} label="Financials" tabName="financials" active={activeTab === 'financials'} />
-                    <SidebarItem icon={<Settings size={18} />} label="Platform Settings" tabName="settings" active={activeTab === 'settings'} />
                 </nav>
 
                 <div className="p-4 border-t border-slate-100 mt-auto">

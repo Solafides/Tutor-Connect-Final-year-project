@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { CheckCircle, Clock, FileUp, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { VerificationSubmitButton } from '@/components/VerificationSubmitButton';
 
 export default async function TutorVerificationPage({ searchParams }: { searchParams: any }) {
     const session = await auth();
@@ -223,9 +224,7 @@ export default async function TutorVerificationPage({ searchParams }: { searchPa
 
                             <div className="pt-8 border-t border-slate-100 flex items-center justify-between">
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1"><AlertTriangle size={12}/> Ensure files are clear and under 5MB.</p>
-                                <button type="submit" className="px-12 py-4 bg-emerald-600 text-white font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 active:scale-95">
-                                    Submit Documents
-                                </button>
+                                <VerificationSubmitButton />
                             </div>
                         </form>
                     </div>

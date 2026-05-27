@@ -139,22 +139,6 @@ export async function createBooking(formData: FormData) {
         return acc;
     }, {});
 
-    const existingSessions = await prisma.sessionInstance.findMany({
-        where: {
-            booking: {
-                tutorId,
-                status: {
-                    in: ['PENDING', 'ACCEPTED'],
-                },
-            },
-            sessionDate: {
-                gte: conflictDateRangeStart,
-                lte: conflictDateRangeEnd,
-            },
-        },
-        include: { booking: true },
-    });
-
     const existingBookings = await prisma.booking.findMany({
         where: {
             tutorId,
@@ -184,13 +168,6 @@ export async function createBooking(formData: FormData) {
         if (availabilityConflict) {
             throw new Error(`Selected time range is outside ${weekday} availability for this tutor. Please choose a time within their available schedule.`);
         }
-
-        const instanceConflict = existingSessions.some((existing) => {
-            const existingSessionDate = formatDateOnly(existing.sessionDate.toISOString());
-            return existingSessionDate === date && isConflict(existing.startTime, existing.endTime);
-        });
-
-        if (instanceConflict) return true;
 
         const bookingConflict = existingBookings.some((booking) => {
             const existingStart = booking.scheduledFor.toISOString().slice(11, 16);
@@ -227,29 +204,6 @@ export async function createBooking(formData: FormData) {
             status: 'PENDING',
             isPaid: false,
             scheduleDetails,
-            recurringSchedule: {
-                create: {
-                    startDate: new Date(startDate),
-                    endDate: new Date(endDate),
-                    selectedDays,
-                    startTime,
-                    endTime,
-                    timezone,
-                }
-            },
-            sessions: {
-                create: sessionDates.map((date) => ({
-                    sessionDate: new Date(`${date}T00:00:00`),
-                    startTime,
-                    endTime,
-                    durationHours: hoursPerSession,
-                    status: 'SCHEDULED',
-                }))
-            }
-        },
-        include: {
-            recurringSchedule: true,
-            sessions: true,
         }
     });
 
@@ -273,7 +227,6 @@ export async function cancelBooking(formData: FormData) {
         where: { id: bookingId },
         data: {
             status: 'CANCELLED',
-            sessions: { updateMany: { where: { status: 'SCHEDULED' }, data: { status: 'CANCELLED' } } }
         }
     });
 }
