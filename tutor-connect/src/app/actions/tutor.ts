@@ -82,7 +82,7 @@ export async function updateTutorProfile(formData: FormData) {
             await tx.availability.createMany({
                 data: availabilities.map((availability) => ({
                     tutorId: tutorProfile.id,
-                    dayOfWeek: availability.dayOfWeek,
+                    dayOfWeek: availability.dayOfWeek as any,
                     startTime: availability.startTime,
                     endTime: availability.endTime,
                     isActive: true,

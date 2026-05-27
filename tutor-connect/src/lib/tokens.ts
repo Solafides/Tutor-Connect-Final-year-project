@@ -2,15 +2,10 @@ import { prisma } from '@/lib/db';
 import crypto from 'crypto';
 
 export const generateVerificationToken = async (email: string, type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET') => {
-    let token: string;
-    let expiresAt: Date;
-    
-    if (type === 'EMAIL_VERIFICATION' || type === 'PASSWORD_RESET') {
-        // 6-digit OTP
-        token = Math.floor(100000 + Math.random() * 900000).toString();
-        // Expires in 15 minutes
-        expiresAt = new Date(new Date().getTime() + 15 * 60 * 1000);
-    }
+    // 6-digit OTP
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    // Expires in 15 minutes
+    const expiresAt = new Date(new Date().getTime() + 15 * 60 * 1000);
 
     // Check if token already exists for this email and type, delete it
     const existingToken = await prisma.verificationToken.findFirst({

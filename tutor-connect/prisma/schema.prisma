@@ -181,15 +181,6 @@ model Transaction {
 }
 
 model Booking {
-<<<<<<< HEAD
-  id                 String         @id @default(cuid())
-  studentId          String         @map("student_id")
-  tutorId            String         @map("tutor_id")
-  subjectName        String         @map("subject_name")
-  scheduledFor       DateTime       @map("scheduled_for")
-  endDate            DateTime?      @map("end_date")
-  schedule           Json?
-=======
   id                 String              @id @default(cuid())
   studentId          String              @map("student_id")
   tutorId            String              @map("tutor_id")
@@ -200,7 +191,7 @@ model Booking {
   packageDuration    String?             @map("package_duration")
   daysPerWeek        Int?                @map("days_per_week")
   scheduleDetails    Json?               @map("schedule_details")
->>>>>>> e4f534e5f9af3f18933c5b4692e2670445658ec5
+  schedule           Json?
   duration           Int
   totalSessions      Int?                @map("total_sessions")
   totalHours         Decimal?            @map("total_hours") @db.Decimal(10, 2)

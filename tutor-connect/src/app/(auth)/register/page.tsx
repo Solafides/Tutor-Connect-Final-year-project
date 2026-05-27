@@ -51,7 +51,8 @@ export default function RegisterPage() {
             }
 
             if (result.requireOtp) {
-                router.push(`/verify-email?email=${encodeURIComponent(payload.email as string)}`);
+                const emailToVerify = formData.get('email')?.toString() || '';
+                router.push(`/verify-email?email=${encodeURIComponent(emailToVerify)}`);
             } else {
                 // Fallback redirect
                 router.push('/login?registered=true');

@@ -38,11 +38,8 @@ import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
-<<<<<<< HEAD
 import ChatLayout from '@/components/chat/ChatLayout';
-=======
 import { ConfirmActionButton } from '@/components/ConfirmActionButton';
->>>>>>> e4f534e5f9af3f18933c5b4692e2670445658ec5
 
 export default async function StaffDashboardPage({ searchParams }: { searchParams: any }) {
     // 1. Authorization & Session Check
@@ -363,7 +360,6 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                 </div>
 
                 <nav className="flex-1 overflow-y-auto p-4 space-y-2 mt-4">
-<<<<<<< HEAD
                     <SidebarItem icon={<Layout size={18} />} label="Overview" tabName="overview" active={activeTab === 'overview'} />
                     <SidebarItem 
                         icon={<UserCheck size={18} />} 
@@ -379,23 +375,6 @@ export default async function StaffDashboardPage({ searchParams }: { searchParam
                         label="Support Tickets" 
                         tabName="support" 
                         active={activeTab === 'support'} 
-=======
-                    <SidebarItem icon={<Layout size={20} />} label="Overview" tabName="overview" active={activeTab === 'overview'} />
-                    <SidebarItem
-                        icon={<UserCheck size={20} />}
-                        label="Verifications"
-                        tabName="verifications"
-                        active={activeTab === 'verifications'}
-                        badge={pendingTutors.length > 0 ? pendingTutors.length : undefined}
-                    />
-                    <SidebarItem icon={<Users size={20} />} label="Manage Tutors" tabName="tutors" active={activeTab === 'tutors'} />
-                    <SidebarItem icon={<CalendarCheck size={20} />} label="All Bookings" tabName="bookings" active={activeTab === 'bookings'} />
-                    <SidebarItem
-                        icon={<AlertCircle size={20} />}
-                        label="Support Tickets"
-                        tabName="support"
-                        active={activeTab === 'support'}
->>>>>>> e4f534e5f9af3f18933c5b4692e2670445658ec5
                         badge={openComplaints.length > 0 ? openComplaints.length : undefined}
                     />
                     <SidebarItem 
