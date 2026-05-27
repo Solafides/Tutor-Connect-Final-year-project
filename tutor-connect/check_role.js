@@ -10,7 +10,7 @@ async function main() {
     console.log('User Role Check:', user);
 }
 
-// run the script with node check_role.js
+// run
 main()
     .catch(e => console.error(e))
     .finally(async () => await prisma.$disconnect());
